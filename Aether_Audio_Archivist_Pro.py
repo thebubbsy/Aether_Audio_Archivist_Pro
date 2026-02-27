@@ -39,7 +39,7 @@ def bootstrap_dependencies():
 bootstrap_dependencies()
 
 from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer, DataTable, Log, Input, Button, Label, Static, Select
+from textual.widgets import Header, Footer, DataTable, Log, Input, Button, Label, Static, Select, ProgressBar
 from textual.containers import Container, Vertical, Horizontal
 from textual.binding import Binding
 from textual import work, on
@@ -137,6 +137,7 @@ class Archivist(Screen):
                 yield DataTable(id="data-table")
                 with Horizontal(id="action-bar"):
                     yield Button("GO (COMMENCE INGESTION)", id="go-btn", variant="success")
+                    yield ProgressBar(id="ingest-progress", total=100, show_eta=True)
             yield Log(id="hacker-log", highlight=True)
         yield Footer()
 
@@ -312,6 +313,9 @@ class Archivist(Screen):
         if not selected:
              self.app.notify("ERROR: NO VECTORS SELECTED", severity="error")
              return
+
+        self.query_one(ProgressBar).update(total=len(selected), progress=0)
+
         
         self.stats = {"total": len(selected), "complete": 0, "no_match": 0, "failed": 0}
         self.pending_tasks = len(selected)
@@ -373,11 +377,13 @@ class Archivist(Screen):
                         else:
                             self.tracks[index]["status"] = "NO MATCH"
                             self.stats["no_match"] += 1
+                            self.query_one(ProgressBar).advance(1)
                             self.post_message(TrackUpdate(index, "NO MATCH", "orange"))
                             return
                     else:
                         self.tracks[index]["status"] = "NO MATCH"
                         self.stats["no_match"] += 1
+                        self.query_one(ProgressBar).advance(1)
                         self.post_message(TrackUpdate(index, "NO MATCH", "orange"))
                         return
 
@@ -428,12 +434,14 @@ class Archivist(Screen):
                 self.stats["complete"] += 1
                 self.post_message(TrackUpdate(index, "COMPLETE", "green"))
                 self.log_kernel(f"COMPLETE: {track['title']} ({elapsed:.1f}s)")
+                self.query_one(ProgressBar).advance(1)
                 
             except Exception as e:
                 self.tracks[index]["status"] = "FAILED"
                 self.stats["failed"] += 1
                 self.post_message(TrackUpdate(index, "FAILED", "red"))
                 self.log_kernel(f"FAIL: {track['title']} ({e})")
+                self.query_one(ProgressBar).advance(1)
             finally:
                 self.pending_tasks -= 1
                 if self.pending_tasks == 0:
@@ -669,29 +677,32 @@ class AetherApp(App):
         text-style: bold;
     }
 
-    #hacker-log {
-        height: 30%;
-        border-top: solid #00ff00;
-        background: #000000;
-        color: #00cc00;
-        padding-left: 1;
+    #ingest-progress {
+        width: 100%;
+        margin-top: 1;
+        color: #00ff00;
     }
 
-    DataTable > .datatable--header {
-        background: #1a1a1a;
-        color: #00ff00;
+    #ingest-progress > .bar--complete {
+        color: #004400;
+        background: #00ff00;
+    }
+
+    #ingest-progress > .bar--bar {
+        color: #004400;
+        background: #111111;
+    }
+        width: 100%;
+        width: 100%;
+        min-height: 1;
+        background: #004400;
+        color: #ffffff;
+        border: none;
         text-style: bold;
     }
 
-    #stats-box {
-        align: center middle;
-        height: auto;
-        width: 60;
-        border: thick #00ff00;
-        padding: 1 3;
-        background: #050505;
-    }
-
+    #hacker-log {
+        height: 30%;
     #stats-box Label {
         margin-top: 1;
         width: 100%;
