@@ -21,7 +21,7 @@ def bootstrap_dependencies():
             __import__(dep)
         except ImportError:
             subprocess.check_call([sys.executable, "-m", "pip", "install", dep, "-q"])
-    
+
     # Playwright browser validation
     try:
         from playwright.async_api import async_playwright
@@ -89,21 +89,21 @@ class Launchpad(Screen):
         threads = self.query_one("#threads-input").value
         engine = self.query_one("#engine-select").value
         library = self.query_one("#library-input").value
-        
+
         if not url:
             self.app.notify("CRITICAL: SOURCE URL MISSING", severity="error")
             return
-            
+
         try:
             thread_count = int(threads)
         except ValueError:
             thread_count = 36
-            
+
         self.app.push_screen(Archivist(url, library, thread_count, engine))
 
 class Archivist(Screen):
     """The Operational Command Center."""
-    
+
     BINDINGS = [
         Binding("space", "toggle_select", "Toggle Selected"),
         Binding("a", "select_all", "Select Global All"),
@@ -147,7 +147,7 @@ class Archivist(Screen):
         self.col_keys["ARTIST"] = table.add_column("ARTIST")
         self.col_keys["TITLE"] = table.add_column("TITLE")
         self.col_keys["DUR"] = table.add_column("DUR")
-        
+
         table.cursor_type = "row"
         self.log_kernel("SYSTEM INITIALIZED. WELCOME, ARCHITECT BUBB.")
         self.scrape_tracks()
@@ -163,28 +163,28 @@ class Archivist(Screen):
         dur_regex = re.compile(r'^\d{1,2}:\d{2}(:\d{2})?$')
         self.log_kernel(f"DEPLOYING PROXIES TO: {self.url}")
         from playwright.async_api import async_playwright
-        
+
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
             page = await browser.new_page(
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             )
-            
+
             try:
                 await page.goto(self.url, timeout=60000)
                 await page.wait_for_load_state("load")
-                
+
                 # Dismiss cookie wall
                 try: await page.click('button#onetrust-accept-btn-handler', timeout=3000)
                 except: pass
 
                 await page.wait_for_selector('[data-testid="tracklist-row"]', timeout=30000)
-                
+
                 table = self.query_one(DataTable)
                 processed_ids = set()
-                
+
                 self.log_kernel("HARVESTING VECTORS (REAL-TIME PROPAGATION)...")
-                
+
                 # Infinite Scroll Engine
                 last_count = -1
                 stable_count = 0
@@ -196,28 +196,28 @@ class Archivist(Screen):
                             await rows[-1].scroll_into_view_if_needed()
                         except:
                             pass
-                    
+
                     # Additional scrolling to ensure we hit the bottom
                     await page.mouse.wheel(0, 5000)
                     for _ in range(4):
                          await page.keyboard.press("PageDown")
                          await asyncio.sleep(0.5)
-                    
+
                     # Re-query rows in current viewport for processing
                     rows = await page.query_selector_all('[data-testid="tracklist-row"]')
                     for row in rows:
                         try:
                             title_elem = await row.query_selector('div[dir="auto"]')
                             title = await title_elem.inner_text() if title_elem else "Unknown"
-                            
+
                             artist_elems = await row.query_selector_all('a[href*="/artist/"]')
                             artists = ", ".join([await a.inner_text() for a in artist_elems])
-                            
+
                             # Surgical ID creation to handle virtualized list duplicates
                             track_id = f"{artists}_{title}".strip()
                             if track_id and track_id not in processed_ids:
                                 processed_ids.add(track_id)
-                                
+
                                 dur_elem = await row.query_selector('div[data-testid="tracklist-row-duration"]')
                                 duration = "0:00"
                                 if dur_elem:
@@ -241,7 +241,7 @@ class Archivist(Screen):
                                 })
                                 table.add_row("[X]", "[yellow]WAITING FOR PROPAGATION[/]", artists, title[:40], duration, key=str(idx))
                         except Exception: continue
-                    
+
                     current_count = len(self.tracks)
                     if current_count == last_count:
                         stable_count += 1
@@ -253,7 +253,7 @@ class Archivist(Screen):
 
                 self.is_scraping = False
                 self.log_kernel(f"COMPLETE HARVEST: {len(self.tracks)} TRACK DESCRIPTORS.")
-                
+
                 # Flip statuses only after full harvest
                 status_key = self.col_keys["STATUS"]
                 for i in range(len(self.tracks)):
@@ -261,7 +261,7 @@ class Archivist(Screen):
                     try:
                         table.update_cell(str(i), status_key, "[white]QUEUED[/]")
                     except: pass
-                
+
                 self.log_kernel("VECTORS SYNCHRONIZED. READY FOR INGESTION.")
             except Exception as e:
                 self.log_kernel(f"CRITICAL SCRAPE FAILURE: {e}")
@@ -307,17 +307,129 @@ class Archivist(Screen):
         if self.is_scraping:
             self.app.notify("WARNING: STILL PROXIMITING VECTORS", severity="warning")
             return
-            
+
         selected = [i for i, t in enumerate(self.tracks) if t["selected"]]
         if not selected:
              self.app.notify("ERROR: NO VECTORS SELECTED", severity="error")
              return
-        
+
         self.stats = {"total": len(selected), "complete": 0, "no_match": 0, "failed": 0}
         self.pending_tasks = len(selected)
         self.log_kernel(f"COMMENCING THREADED INGESTION (DEPTH: {self.threads}, ENGINE: {self.engine.upper()}).")
         for idx in selected:
             self.ingest_worker(idx)
+
+    async def search_track(self, index: int, track: dict):
+        """Encapsulated search logic with ambiguity handling."""
+        # High-Fidelity Logic with fallback queries
+        queries = [
+            f"{track['artist']} {track['title']} official audio",
+            f"{track['artist']} {track['title']} official video",
+            f"{track['artist']} {track['title']} lyrics",
+            f"{track['artist']} {track['title']}"
+        ]
+
+        results = []
+        for query in queries:
+            if results:
+                break
+            try:
+                search_cmd = [sys.executable, "-m", "yt_dlp", f"ytsearch5:{query}", "--dump-json", "--flat-playlist"]
+                proc = await asyncio.create_subprocess_exec(*search_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+                stdout, _ = await proc.communicate()
+                results = [json.loads(line) for line in stdout.decode().strip().split("\n") if line]
+            except:
+                continue
+
+        spotify_dur = self.parse_duration(track['duration'])
+
+        best = None
+        min_diff = 999
+        for entry in results:
+            duration = entry.get('duration', 0)
+            if duration > 0:
+                diff = abs(duration - spotify_dur)
+                if diff < 30 and diff < min_diff:
+                    min_diff, best = diff, entry
+
+        if not best:
+            if results:
+                self.tracks[index]["status"] = "AWAITING USER DECISION"
+                self.post_message(TrackUpdate(index, "AWAITING USER DECISION", "yellow"))
+                self.post_message(ResolveFailed(index, track, results[:3]))
+                await asyncio.sleep(0.5)
+                while self.tracks[index].get("youtube_url") is None and self.tracks[index]["status"] == "AWAITING USER DECISION":
+                    await asyncio.sleep(0.2)
+
+                if self.tracks[index].get("youtube_url"):
+                    best = {"url": self.tracks[index]["youtube_url"], "id": self.tracks[index].get("youtube_id", "manual")}
+                else:
+                    self.tracks[index]["status"] = "NO MATCH"
+                    self.stats["no_match"] += 1
+                    self.post_message(TrackUpdate(index, "NO MATCH", "orange"))
+                    return None
+            else:
+                self.tracks[index]["status"] = "NO MATCH"
+                self.stats["no_match"] += 1
+                self.post_message(TrackUpdate(index, "NO MATCH", "orange"))
+                return None
+        return best
+
+    async def download_track(self, track: dict, best: dict) -> Path:
+        """Handles the high-quality download of the track."""
+        # Sanitize filename
+        # Ensure we have a valid path object for target_dir
+        if not isinstance(self.target_dir, Path):
+            self.target_dir = Path(self.target_dir)
+
+        temp_path = self.target_dir / f"tmp_{best['id']}.mp3"
+
+        # High-Quality Download (320kbps MP3)
+        encoder_args = ["--audio-quality", "0"]
+        gpu_args = []
+        if self.engine == "gpu":
+                self.log_kernel(f"GPU MODE: ENGAGING NVIDIA CUDA ACCELERATION FOR {track['title']}")
+                gpu_args = ["--postprocessor-args", "ffmpeg:-hwaccel cuda"]
+        else:
+                self.log_kernel(f"CPU MODE: PROCESSING {track['title']} (NO GPU ACCELERATION)")
+
+        dl_cmd = [
+            sys.executable, "-m", "yt_dlp", best['url'],
+            "--extract-audio", "--audio-format", "mp3",
+            "--output", str(temp_path.with_suffix("")), "--no-playlist"
+        ] + encoder_args + gpu_args
+
+        proc = await asyncio.create_subprocess_exec(*dl_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+        await proc.communicate()
+
+        return temp_path
+
+    async def tag_track(self, track: dict, temp_path: Path) -> Path:
+        """Handles the metadata tagging using ffmpeg."""
+        # Sanitize filename
+        final_name = "".join([c if c.isalnum() or c in " -_." else "_" for c in f"{track['artist']} - {track['title']}.mp3"])
+        dest = self.target_dir / final_name
+
+        # Tagging (FFmpeg) with Metadata and Hardware Acceleration support
+        tag_prefix = ["ffmpeg"]
+        if self.engine == "gpu":
+            tag_prefix = ["ffmpeg", "-hwaccel", "cuda"]
+
+        tag_cmd = tag_prefix + [
+            "-i", str(temp_path),
+            "-metadata", f"artist={track['artist']}", "-metadata", f"title={track['title']}",
+            "-codec", "copy", str(dest), "-y"
+        ]
+
+        proc = await asyncio.create_subprocess_exec(*tag_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+        await proc.communicate()
+
+        if temp_path.exists():
+            os.remove(temp_path)
+
+        return dest
+
+
 
     @work
     async def ingest_worker(self, index: int):
@@ -326,109 +438,26 @@ class Archivist(Screen):
             self.tracks[index]["status"] = "ARCHIVING"
             self.post_message(TrackUpdate(index, "ARCHIVING", "cyan"))
             track_start = datetime.now()
-            
-            try:
-                # High-Fidelity Logic with fallback queries
-                queries = [
-                    f"{track['artist']} {track['title']} official audio",
-                    f"{track['artist']} {track['title']} official video",
-                    f"{track['artist']} {track['title']} lyrics",
-                    f"{track['artist']} {track['title']}"
-                ]
-                
-                results = []
-                for query in queries:
-                    if results:
-                        break
-                    try:
-                        search_cmd = [sys.executable, "-m", "yt_dlp", f"ytsearch5:{query}", "--dump-json", "--flat-playlist"]
-                        proc = await asyncio.create_subprocess_exec(*search_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-                        stdout, _ = await proc.communicate()
-                        results = [json.loads(line) for line in stdout.decode().strip().split("\n") if line]
-                    except:
-                        continue
-                
-                spotify_dur = self.parse_duration(track['duration'])
-                
-                best = None
-                min_diff = 999
-                for entry in results:
-                    duration = entry.get('duration', 0)
-                    if duration > 0:
-                        diff = abs(duration - spotify_dur)
-                        if diff < 30 and diff < min_diff:
-                            min_diff, best = diff, entry
-                
-                if not best:
-                    if results:
-                        self.tracks[index]["status"] = "AWAITING USER DECISION"
-                        self.post_message(TrackUpdate(index, "AWAITING USER DECISION", "yellow"))
-                        self.post_message(ResolveFailed(index, track, results[:3]))
-                        await asyncio.sleep(0.5)
-                        while self.tracks[index].get("youtube_url") is None and self.tracks[index]["status"] == "AWAITING USER DECISION":
-                            await asyncio.sleep(0.2)
-                        
-                        if self.tracks[index].get("youtube_url"):
-                            best = {"url": self.tracks[index]["youtube_url"], "id": self.tracks[index].get("youtube_id", "manual")}
-                        else:
-                            self.tracks[index]["status"] = "NO MATCH"
-                            self.stats["no_match"] += 1
-                            self.post_message(TrackUpdate(index, "NO MATCH", "orange"))
-                            return
-                    else:
-                        self.tracks[index]["status"] = "NO MATCH"
-                        self.stats["no_match"] += 1
-                        self.post_message(TrackUpdate(index, "NO MATCH", "orange"))
-                        return
 
-                # Sanitize filename
-                final_name = "".join([c if c.isalnum() or c in " -_." else "_" for c in f"{track['artist']} - {track['title']}.mp3"])
-                dest = self.target_dir / final_name
-                temp_path = self.target_dir / f"tmp_{best['id']}.mp3"
-                
-                # High-Quality Download (320kbps MP3)
-                encoder_args = ["--audio-quality", "0"]
-                gpu_args = []
-                if self.engine == "gpu":
-                     self.log_kernel(f"GPU MODE: ENGAGING NVIDIA CUDA ACCELERATION FOR {track['title']}")
-                     gpu_args = ["--postprocessor-args", "ffmpeg:-hwaccel cuda"]
-                else:
-                     self.log_kernel(f"CPU MODE: PROCESSING {track['title']} (NO GPU ACCELERATION)")
-                
-                dl_cmd = [
-                    sys.executable, "-m", "yt_dlp", best['url'],
-                    "--extract-audio", "--audio-format", "mp3", 
-                    "--output", str(temp_path.with_suffix("")), "--no-playlist"
-                ] + encoder_args + gpu_args
-                proc = await asyncio.create_subprocess_exec(*dl_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-                await proc.communicate()
-                
-                # Tagging (FFmpeg) with Metadata and Hardware Acceleration support
-                tag_prefix = ["ffmpeg"]
-                if self.engine == "gpu":
-                    tag_prefix = ["ffmpeg", "-hwaccel", "cuda"]
-                
-                tag_cmd = tag_prefix + [
-                    "-i", str(temp_path),
-                    "-metadata", f"artist={track['artist']}", "-metadata", f"title={track['title']}",
-                    "-codec", "copy", str(dest), "-y"
-                ]
-                proc = await asyncio.create_subprocess_exec(*tag_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-                await proc.communicate()
-                
-                if temp_path.exists(): os.remove(temp_path)
-                
+            try:
+                best = await self.search_track(index, track)
+                if not best:
+                    return
+
+                temp_path = await self.download_track(track, best)
+                dest = await self.tag_track(track, temp_path)
+
                 # Track metrics
                 elapsed = (datetime.now() - track_start).total_seconds()
                 self.track_times[index] = elapsed
                 if dest.exists():
                     self.track_sizes[index] = dest.stat().st_size
-                
+
                 self.tracks[index]["status"] = "COMPLETE"
                 self.stats["complete"] += 1
                 self.post_message(TrackUpdate(index, "COMPLETE", "green"))
                 self.log_kernel(f"COMPLETE: {track['title']} ({elapsed:.1f}s)")
-                
+
             except Exception as e:
                 self.tracks[index]["status"] = "FAILED"
                 self.stats["failed"] += 1
@@ -442,12 +471,13 @@ class Archivist(Screen):
                     self.save_mission_report(total_time)
                     self.app.push_screen(StatsScreen(self.stats, self.track_times, self.track_sizes, total_time))
 
+
     def on_track_update(self, message: TrackUpdate) -> None:
         table = self.query_one(DataTable)
         try:
             table.update_cell(str(message.index), self.col_keys["STATUS"], f"[{message.color}]{message.status}[/]")
         except: pass
-    
+
     def on_resolve_failed(self, message: ResolveFailed) -> None:
         self.app.push_screen(ResolveMatchScreen(message.index, message.track, message.results, self))
 
@@ -458,12 +488,12 @@ class Archivist(Screen):
             if len(parts) == 3: return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
         except: return 0
         return 0
-    
+
     def save_mission_report(self, total_time):
         import hashlib
         playlist_id = hashlib.md5(self.url.encode()).hexdigest()[:8]
         history_file = Path(os.getcwd()) / "mission_history.json"
-        
+
         avg_time = total_time / max(self.stats["complete"], 1)
         largest_size = max(self.track_sizes.values()) if self.track_sizes else 0
         largest_track = None
@@ -472,7 +502,7 @@ class Archivist(Screen):
                 if size == largest_size:
                     largest_track = self.tracks[idx]["title"]
                     break
-        
+
         report = {
             "timestamp": datetime.now().isoformat(),
             "playlist_id": playlist_id,
@@ -495,16 +525,16 @@ class Archivist(Screen):
                 for i, t in enumerate(self.tracks)
             ]
         }
-        
+
         history = []
         if history_file.exists():
             with open(history_file, 'r') as f:
                 history = json.load(f)
-        
+
         history.append(report)
         with open(history_file, 'w') as f:
             json.dump(history, f, indent=2)
-        
+
         self.log_kernel(f"MISSION REPORT SAVED: {history_file}")
 
 class ResolveMatchScreen(Screen):
@@ -525,13 +555,13 @@ class ResolveMatchScreen(Screen):
             yield Label(f"[bold cyan]{self.track['artist']} - {self.track['title']}[/]")
             yield Label("[white]Select which result matches this song:[/]")
             yield Static("", id="spacer-a")
-            
+
             for i, result in enumerate(self.results, 1):
                 title = result.get('title', 'Unknown')[:60]
                 duration = result.get('duration', 0)
                 dur_str = f"{int(duration // 60)}:{int(duration % 60):02d}"
                 yield Button(f"[{i}] {title} ({dur_str})", id=f"opt-{i}", variant="primary" if i == 1 else "default")
-            
+
             yield Static("", id="spacer-b")
             yield Button("[0] SKIP (Mark as No Match)", id="opt-0", variant="error")
         yield Footer()
@@ -562,14 +592,14 @@ class StatsScreen(Screen):
         complete = self.stats["complete"]
         no_match = self.stats["no_match"]
         failed = self.stats["failed"]
-        
+
         avg_time = self.total_time / max(complete, 1)
         largest_size = max(self.track_sizes.values()) if self.track_sizes else 0
         largest_mb = largest_size / (1024 * 1024)
-        
+
         time_str = f"{int(self.total_time // 60)}m {int(self.total_time % 60)}s"
         avg_time_str = f"{int(avg_time // 60)}m {int(avg_time % 60)}s" if avg_time > 0 else "0s"
-        
+
         yield Container(
             Static("==================================================", id="stats-line-1"),
             Static("         INGESTION MISSION REPORT: COMPLETE       ", id="stats-line-2"),
@@ -594,10 +624,10 @@ class StatsScreen(Screen):
 
 class AetherApp(App):
     """The High-Agency Ingestion Vanguard."""
-    
+
     TITLE = "AETHER AUDIO ARCHIVIST PRO // MATTHEW BUBB"
     SUB_TITLE = "SOLO ARCHITECT: MATTHEW BUBB"
-    
+
     CSS = """
     Screen {
         background: #050505;
@@ -737,6 +767,6 @@ if __name__ == "__main__":
     parser.add_argument("--library", default="Aether_Archive")
     parser.add_argument("--threads", type=int, default=36)
     args = parser.parse_args()
-    
+
     app = AetherApp(url=args.url, library=args.library, threads=args.threads)
     app.run()
