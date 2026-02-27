@@ -40,6 +40,7 @@ bootstrap_dependencies()
 
 from textual.app import App, ComposeResult
 from textual.widgets import Header, Footer, DataTable, Log, Input, Button, Label, Static, Select
+from textual.widgets.data_table import CellDoesNotExist
 from textual.containers import Container, Vertical, Horizontal
 from textual.binding import Binding
 from textual import work, on
@@ -260,7 +261,7 @@ class Archivist(Screen):
                     self.tracks[i]["status"] = "QUEUED"
                     try:
                         table.update_cell(str(i), status_key, "[white]QUEUED[/]")
-                    except: pass
+                    except CellDoesNotExist: pass
                 
                 self.log_kernel("VECTORS SYNCHRONIZED. READY FOR INGESTION.")
             except Exception as e:
@@ -283,7 +284,7 @@ class Archivist(Screen):
             self.tracks[idx]["selected"] = not self.tracks[idx]["selected"]
             val = "[bold green][X][/]" if self.tracks[idx]["selected"] else "[ ]"
             table.update_cell(row_key, self.col_keys["SEL"], val)
-        except: pass
+        except CellDoesNotExist: pass
 
     def action_select_all(self) -> None:
         table = self.query_one(DataTable)
@@ -291,7 +292,7 @@ class Archivist(Screen):
         for i, track in enumerate(self.tracks):
             track["selected"] = True
             try: table.update_cell(str(i), sel_key, "[bold green][X][/]")
-            except: pass
+            except CellDoesNotExist: pass
         self.log_kernel("GLOBAL SELECTION: ALL VECTORS ENGAGED.")
 
     def action_select_none(self) -> None:
@@ -300,7 +301,7 @@ class Archivist(Screen):
         for i, track in enumerate(self.tracks):
             track["selected"] = False
             try: table.update_cell(str(i), sel_key, "[ ]")
-            except: pass
+            except CellDoesNotExist: pass
         self.log_kernel("GLOBAL SELECTION: ALL VECTORS DISENGAGED.")
 
     def action_start_ingest(self) -> None:
@@ -446,7 +447,7 @@ class Archivist(Screen):
         table = self.query_one(DataTable)
         try:
             table.update_cell(str(message.index), self.col_keys["STATUS"], f"[{message.color}]{message.status}[/]")
-        except: pass
+        except CellDoesNotExist: pass
     
     def on_resolve_failed(self, message: ResolveFailed) -> None:
         self.app.push_screen(ResolveMatchScreen(message.index, message.track, message.results, self))
