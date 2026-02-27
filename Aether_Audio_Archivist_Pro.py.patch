@@ -1,0 +1,101 @@
+<<<<<<< SEARCH
+    def save_mission_report(self, total_time):
+        import hashlib
+        playlist_id = hashlib.md5(self.url.encode()).hexdigest()[:8]
+        history_file = Path(os.getcwd()) / "mission_history.json"
+
+        avg_time = total_time / max(self.stats["complete"], 1)
+        largest_size = max(self.track_sizes.values()) if self.track_sizes else 0
+        largest_track = None
+        if largest_size > 0:
+            for idx, size in self.track_sizes.items():
+                if size == largest_size:
+                    largest_track = self.tracks[idx]["title"]
+                    break
+
+        report = {
+            "timestamp": datetime.now().isoformat(),
+            "playlist_id": playlist_id,
+            "playlist_url": self.url,
+            "library": self.library,
+            "engine": self.engine,
+            "total_time": round(total_time, 2),
+            "avg_time_per_song": round(avg_time, 2),
+            "stats": self.stats,
+            "largest_song": largest_track,
+            "largest_size_bytes": largest_size,
+            "tracks": [
+                {
+                    "title": t["title"],
+                    "artist": t["artist"],
+                    "status": t["status"],
+                    "time_seconds": self.track_times.get(i, 0),
+                    "size_bytes": self.track_sizes.get(i, 0)
+                }
+                for i, t in enumerate(self.tracks)
+            ]
+        }
+
+        history = []
+        if history_file.exists():
+            with open(history_file, 'r') as f:
+                history = json.load(f)
+
+        history.append(report)
+        with open(history_file, 'w') as f:
+            json.dump(history, f, indent=2)
+
+        self.log_kernel(f"MISSION REPORT SAVED: {history_file}")
+=======
+    async def save_mission_report(self, total_time):
+        import hashlib
+        playlist_id = hashlib.md5(self.url.encode()).hexdigest()[:8]
+        history_file = Path(os.getcwd()) / "mission_history.json"
+
+        avg_time = total_time / max(self.stats["complete"], 1)
+        largest_size = max(self.track_sizes.values()) if self.track_sizes else 0
+        largest_track = None
+        if largest_size > 0:
+            for idx, size in self.track_sizes.items():
+                if size == largest_size:
+                    largest_track = self.tracks[idx]["title"]
+                    break
+
+        # Prepare data in main thread (fast)
+        report = {
+            "timestamp": datetime.now().isoformat(),
+            "playlist_id": playlist_id,
+            "playlist_url": self.url,
+            "library": self.library,
+            "engine": self.engine,
+            "total_time": round(total_time, 2),
+            "avg_time_per_song": round(avg_time, 2),
+            "stats": self.stats,
+            "largest_song": largest_track,
+            "largest_size_bytes": largest_size,
+            "tracks": [
+                {
+                    "title": t["title"],
+                    "artist": t["artist"],
+                    "status": t["status"],
+                    "time_seconds": self.track_times.get(i, 0),
+                    "size_bytes": self.track_sizes.get(i, 0)
+                }
+                for i, t in enumerate(self.tracks)
+            ]
+        }
+
+        # Offload blocking I/O to thread
+        await asyncio.to_thread(self._write_report_to_disk, history_file, report)
+        self.log_kernel(f"MISSION REPORT SAVED: {history_file}")
+
+    def _write_report_to_disk(self, history_file, report):
+        history = []
+        if history_file.exists():
+            with open(history_file, 'r') as f:
+                history = json.load(f)
+
+        history.append(report)
+        with open(history_file, 'w') as f:
+            json.dump(history, f, indent=2)
+>>>>>>> REPLACE
