@@ -352,16 +352,18 @@ class Archivist(Screen):
                      self.log_kernel(f"GPU MODE: ENGAGING NVIDIA CUDA ACCELERATION FOR {track['title']}")
                      # Pass hardware acceleration directly to FFmpeg post-processor in yt-dlp
                      gpu_args = ["--postprocessor-args", "ffmpeg:-hwaccel cuda"]
+                else:
+                     self.log_kernel(f"CPU MODE: PROCESSING {track['title']} (NO GPU ACCELERATION)")
                 
                 dl_cmd = [
                     sys.executable, "-m", "yt_dlp", best['url'],
                     "--extract-audio", "--audio-format", "mp3", 
-                    "--output", str(self.target_dir / f"tmp_{best['id']}.%(ext)s"), "--no-playlist"
+                    "--output", str(temp_path.with_suffix("")), "--no-playlist"
                 ] + encoder_args + gpu_args
                 proc = await asyncio.create_subprocess_exec(*dl_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
                 await proc.communicate()
                 
-                # Tagging (FFmpeg) with Hardware Acceleration support
+                # Tagging (FFmpeg) with Metadata and Hardware Acceleration support
                 tag_prefix = ["ffmpeg"]
                 if self.engine == "gpu":
                     tag_prefix = ["ffmpeg", "-hwaccel", "cuda"]
@@ -369,7 +371,7 @@ class Archivist(Screen):
                 tag_cmd = tag_prefix + [
                     "-i", str(temp_path),
                     "-metadata", f"artist={track['artist']}", "-metadata", f"title={track['title']}",
-                    "-c", "copy", str(dest), "-y"
+                    "-codec", "copy", str(dest), "-y"
                 ]
                 proc = await asyncio.create_subprocess_exec(*tag_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
                 await proc.communicate()
