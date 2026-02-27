@@ -470,26 +470,41 @@ class Archivist(Screen):
         self.post_message(TrackUpdate(index, "NO MATCH", "orange"))
 
     async def download_track(self, index, track, best):
-        """Phase 2: Encrypted Signal Capture (Download)."""
+        """Phase 2: High-Fidelity Signal Capture (with Auto-Fallback)."""
         temp_path = self.target_dir / f"tmp_{best['id']}.mp3"
-        encoder_args = ["--audio-quality", "0"]
-        gpu_args = []
         
-        if self.engine == "gpu":
-             self.log_kernel(f"GPU MODE: ENGAGING NVIDIA CUDA FOR {track['title']}")
-             gpu_args = ["--postprocessor-args", "ffmpeg:-hwaccel cuda"]
-        else:
-             self.log_kernel(f"CPU MODE: PROCESSING {track['title']}")
+        async def _attempt_dl(use_gpu=False):
+            encoder_args = ["--audio-quality", "0"]
+            gpu_args = ["--postprocessor-args", "ffmpeg:-hwaccel cuda"] if use_gpu else []
+            
+            dl_cmd = [
+                sys.executable, "-m", "yt_dlp", best['url'],
+                "--extract-audio", "--audio-format", "mp3", 
+                "--output", str(temp_path.with_suffix("")), "--no-playlist"
+            ] + encoder_args + gpu_args
+            
+            proc = await asyncio.create_subprocess_exec(
+                *dl_cmd, 
+                stdout=asyncio.subprocess.PIPE, 
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, stderr = await proc.communicate()
+            return await asyncio.to_thread(lambda: temp_path.exists()), stderr
+
+        # PRIMARY ATTEMPT
+        success, stderr = await _attempt_dl(use_gpu=(self.engine == "gpu"))
         
-        dl_cmd = [
-            sys.executable, "-m", "yt_dlp", best['url'],
-            "--extract-audio", "--audio-format", "mp3", 
-            "--output", str(temp_path.with_suffix("")), "--no-playlist"
-        ] + encoder_args + gpu_args
-        
-        proc = await asyncio.create_subprocess_exec(*dl_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-        await proc.communicate()
-        return temp_path if await asyncio.to_thread(lambda: temp_path.exists()) else None
+        # RECOVERY VECTOR: If GPU fails, fallback to CPU
+        if not success and self.engine == "gpu":
+            self.log_kernel(f"RECOVERY: GPU SIGNAL LOSS FOR {track['title']}. INITIATING CPU FALLBACK.")
+            success, stderr = await _attempt_dl(use_gpu=False)
+
+        if not success:
+            err_msg = stderr.decode().strip() if stderr else "UNKNOWN ERROR"
+            self.log_kernel(f"DL ERROR: {err_msg[:200]}")
+            return None
+            
+        return temp_path
 
     async def tag_track(self, index, track, temp_path, elapsed):
         """Phase 3: Metadata Imprinting and Finalization."""
