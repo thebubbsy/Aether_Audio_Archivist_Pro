@@ -439,7 +439,7 @@ class Archivist(Screen):
                 if self.pending_tasks == 0:
                     mission_end = datetime.now()
                     total_time = (mission_end - self.mission_start).total_seconds()
-                    self.save_mission_report(total_time)
+                    await self.save_mission_report(total_time)
                     self.app.push_screen(StatsScreen(self.stats, self.track_times, self.track_sizes, total_time))
 
     def on_track_update(self, message: TrackUpdate) -> None:
