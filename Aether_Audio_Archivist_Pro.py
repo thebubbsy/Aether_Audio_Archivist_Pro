@@ -643,12 +643,12 @@ class Archivist(Screen):
 
 class ResolveMatchScreen(Screen):
     """Screen to resolve failed track matches by showing user options."""
-    def __init__(self, index: int, track: dict, results: list, parent: Screen):
+    def __init__(self, index: int, track: dict, results: list, archivist: Screen):
         super().__init__()
         self.index = index
         self.track = track
         self.results = results
-        self.parent = parent
+        self.archivist = archivist
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -675,11 +675,11 @@ class ResolveMatchScreen(Screen):
         if btn_id and btn_id.startswith("opt-"):
             choice = int(btn_id.split("-")[1])
             if choice == 0:
-                self.parent.tracks[self.index]["youtube_url"] = None
+                self.archivist.tracks[self.index]["youtube_url"] = None
             elif 1 <= choice <= len(self.results):
                 selected = self.results[choice - 1]
-                self.parent.tracks[self.index]["youtube_url"] = selected.get('url')
-                self.parent.tracks[self.index]["youtube_id"] = selected.get('id')
+                self.archivist.tracks[self.index]["youtube_url"] = selected.get('url')
+                self.archivist.tracks[self.index]["youtube_id"] = selected.get('id')
             self.app.pop_screen()
 
 class StatsScreen(Screen):
