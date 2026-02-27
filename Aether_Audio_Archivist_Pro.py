@@ -320,22 +320,36 @@ class Archivist(Screen):
             track_start = datetime.now()
             
             try:
-                # High-Fidelity Logic
-                query = f"{track['artist']} {track['title']} official audio"
-                search_cmd = [sys.executable, "-m", "yt_dlp", f"ytsearch3:{query}", "--dump-json", "--flat-playlist"]
+                # High-Fidelity Logic with fallback queries
+                queries = [
+                    f"{track['artist']} {track['title']} official audio",
+                    f"{track['artist']} {track['title']} official video",
+                    f"{track['artist']} {track['title']} lyrics",
+                    f"{track['artist']} {track['title']}"
+                ]
                 
-                proc = await asyncio.create_subprocess_exec(*search_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-                stdout, _ = await proc.communicate()
+                results = []
+                for query in queries:
+                    if results:
+                        break
+                    try:
+                        search_cmd = [sys.executable, "-m", "yt_dlp", f"ytsearch5:{query}", "--dump-json", "--flat-playlist"]
+                        proc = await asyncio.create_subprocess_exec(*search_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+                        stdout, _ = await proc.communicate()
+                        results = [json.loads(line) for line in stdout.decode().strip().split("\n") if line]
+                    except:
+                        continue
                 
-                results = [json.loads(line) for line in stdout.decode().strip().split("\n") if line]
                 spotify_dur = self.parse_duration(track['duration'])
                 
                 best = None
                 min_diff = 999
                 for entry in results:
-                    diff = abs(entry.get('duration', 0) - spotify_dur)
-                    if diff < 15 and diff < min_diff:
-                        min_diff, best = diff, entry
+                    duration = entry.get('duration', 0)
+                    if duration > 0:
+                        diff = abs(duration - spotify_dur)
+                        if diff < 30 and diff < min_diff:
+                            min_diff, best = diff, entry
                 
                 if not best:
                     self.tracks[index]["status"] = "NO MATCH"
