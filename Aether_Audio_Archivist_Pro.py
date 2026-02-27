@@ -24,7 +24,7 @@ def bootstrap_dependencies():
     
     # Playwright browser validation
     try:
-        from playwright.async_api import async_playwright
+        from playwright.async_api import async_playwright, TimeoutError
         async def check_playwright():
             async with async_playwright() as p:
                 try:
@@ -162,7 +162,7 @@ class Archivist(Screen):
         import re
         dur_regex = re.compile(r'^\d{1,2}:\d{2}(:\d{2})?$')
         self.log_kernel(f"DEPLOYING PROXIES TO: {self.url}")
-        from playwright.async_api import async_playwright
+        from playwright.async_api import async_playwright, TimeoutError
         
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
@@ -176,7 +176,7 @@ class Archivist(Screen):
                 
                 # Dismiss cookie wall
                 try: await page.click('button#onetrust-accept-btn-handler', timeout=3000)
-                except: pass
+                except TimeoutError: pass
 
                 await page.wait_for_selector('[data-testid="tracklist-row"]', timeout=30000)
                 
@@ -260,7 +260,7 @@ class Archivist(Screen):
                     self.tracks[i]["status"] = "QUEUED"
                     try:
                         table.update_cell(str(i), status_key, "[white]QUEUED[/]")
-                    except: pass
+                    except TimeoutError: pass
                 
                 self.log_kernel("VECTORS SYNCHRONIZED. READY FOR INGESTION.")
             except Exception as e:
@@ -283,7 +283,7 @@ class Archivist(Screen):
             self.tracks[idx]["selected"] = not self.tracks[idx]["selected"]
             val = "[bold green][X][/]" if self.tracks[idx]["selected"] else "[ ]"
             table.update_cell(row_key, self.col_keys["SEL"], val)
-        except: pass
+        except TimeoutError: pass
 
     def action_select_all(self) -> None:
         table = self.query_one(DataTable)
@@ -291,7 +291,7 @@ class Archivist(Screen):
         for i, track in enumerate(self.tracks):
             track["selected"] = True
             try: table.update_cell(str(i), sel_key, "[bold green][X][/]")
-            except: pass
+            except TimeoutError: pass
         self.log_kernel("GLOBAL SELECTION: ALL VECTORS ENGAGED.")
 
     def action_select_none(self) -> None:
@@ -300,7 +300,7 @@ class Archivist(Screen):
         for i, track in enumerate(self.tracks):
             track["selected"] = False
             try: table.update_cell(str(i), sel_key, "[ ]")
-            except: pass
+            except TimeoutError: pass
         self.log_kernel("GLOBAL SELECTION: ALL VECTORS DISENGAGED.")
 
     def action_start_ingest(self) -> None:
@@ -446,7 +446,7 @@ class Archivist(Screen):
         table = self.query_one(DataTable)
         try:
             table.update_cell(str(message.index), self.col_keys["STATUS"], f"[{message.color}]{message.status}[/]")
-        except: pass
+        except TimeoutError: pass
     
     def on_resolve_failed(self, message: ResolveFailed) -> None:
         self.app.push_screen(ResolveMatchScreen(message.index, message.track, message.results, self))
