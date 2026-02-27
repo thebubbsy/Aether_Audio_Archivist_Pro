@@ -144,6 +144,7 @@ class Archivist(Screen):
         self.semaphore = asyncio.Semaphore(threads)
         self.is_ingesting = False
         self.harvest_dur = 0
+        self.ingest_start = None
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -353,6 +354,7 @@ class Archivist(Screen):
              return
         
         self.is_ingesting = True
+        self.ingest_start = datetime.now()
         self.query_one(ProgressBar).update(total=len(selected), progress=0)
         
         # Reset stats without replacing the dictionary object reference
@@ -415,8 +417,8 @@ class Archivist(Screen):
                 self.pending_tasks -= 1
                 if self.pending_tasks == 0:
                     mission_end = datetime.now()
-                    total_time = (mission_end - self.mission_start).total_seconds()
-                    await self.close_mission(total_time)
+                    ingest_dur = (mission_end - self.ingest_start).total_seconds()
+                    await self.close_mission(ingest_dur)
 
     async def search_track(self, index, track):
         """Phase 1: High-Fidelity Search Vector."""
@@ -524,15 +526,15 @@ class Archivist(Screen):
             self.log_kernel(f"TAGGING FAILURE: {track['title']} (Output not found)")
             return False
 
-    async def close_mission(self, total_time):
-        total_time = round(total_time, 2)
-        await self.save_mission_report(total_time)
+    async def close_mission(self, ingest_dur):
+        ingest_dur = round(ingest_dur, 2)
+        await self.save_mission_report(ingest_dur)
         try:
             # Convenience: Open Explorer window to the target directory
             await asyncio.to_thread(os.startfile, str(self.target_dir))
         except:
             pass
-        self.app.push_screen(StatsScreen(self.stats, self.track_times, self.track_sizes, total_time, self.harvest_dur))
+        self.app.push_screen(StatsScreen(self.stats, self.track_times, self.track_sizes, ingest_dur, self.harvest_dur))
 
     def on_track_update(self, message: TrackUpdate) -> None:
         table = self.query_one(DataTable)
@@ -569,14 +571,15 @@ class Archivist(Screen):
         except: return 0
         return 0
     
-    async def save_mission_report(self, total_time):
+    async def save_mission_report(self, ingest_dur):
         """Asynchronous mission debriefing."""
         import hashlib
         playlist_id = hashlib.md5(self.url.encode()).hexdigest()[:8]
         history_file = Path(os.getcwd()) / "mission_history.json"
         
         def _write_report_to_disk():
-            avg_time = total_time / max(self.stats["complete"], 1)
+            combined_time = self.harvest_dur + ingest_dur
+            avg_time = combined_time / max(self.stats["complete"], 1)
             largest_size = max(self.track_sizes.values()) if self.track_sizes else 0
             largest_track = None
             if largest_size > 0:
@@ -592,7 +595,8 @@ class Archivist(Screen):
                 "library": self.library,
                 "engine": self.engine,
                 "harvest_duration_seconds": round(self.harvest_dur, 2),
-                "total_time_seconds": round(total_time, 2),
+                "ingest_duration_seconds": round(ingest_dur, 2),
+                "combined_logic_duration": round(combined_time, 2),
                 "avg_time_per_song": round(avg_time, 2),
                 "stats": self.stats,
                 "largest_song": largest_track,
@@ -665,12 +669,12 @@ class ResolveMatchScreen(Screen):
 
 class StatsScreen(Screen):
     """The Mission Summary Vanguard."""
-    def __init__(self, stats: dict, track_times: dict = None, track_sizes: dict = None, total_time: float = 0, harvest_dur: float = 0):
+    def __init__(self, stats: dict, track_times: dict = None, track_sizes: dict = None, ingest_dur: float = 0, harvest_dur: float = 0):
         super().__init__()
         self.stats = stats
         self.track_times = track_times or {}
         self.track_sizes = track_sizes or {}
-        self.total_time = total_time
+        self.ingest_dur = ingest_dur
         self.harvest_dur = harvest_dur
 
     def compose(self) -> ComposeResult:
@@ -679,11 +683,13 @@ class StatsScreen(Screen):
         no_match = self.stats["no_match"]
         failed = self.stats["failed"]
         
-        avg_time = self.total_time / max(complete, 1)
+        combined_time = self.harvest_dur + self.ingest_dur
+        avg_time = combined_time / max(complete, 1)
         largest_size = max(self.track_sizes.values()) if self.track_sizes else 0
         largest_mb = largest_size / (1024 * 1024)
         
-        time_str = f"{int(self.total_time // 60)}m {int(self.total_time % 60)}s"
+        # Format logic-only time (Harvest + Ingest, excluding user idle)
+        logic_time_str = f"{int(combined_time // 60)}m {int(combined_time % 60)}s"
         avg_time_str = f"{int(avg_time // 60)}m {int(avg_time % 60)}s" if avg_time > 0 else "0s"
         
         yield Container(
@@ -696,7 +702,8 @@ class StatsScreen(Screen):
             Label(f"SYSTEM FAILURES:        [bold red]{failed}[/]"),
             Static("", id="spacer-1"),
             Label(f"HARVEST DURATION:      [bold yellow]{self.harvest_dur:.1f}s[/]"),
-            Label(f"INGESTION TIME:        [bold cyan]{time_str}[/]"),
+            Label(f"INGESTION LOGIC:       [bold cyan]{self.ingest_dur:.1f}s[/]"),
+            Label(f"COMBINED EFFICIENCY:   [bold green]{logic_time_str}[/]"),
             Label(f"AVG TIME PER TRACK:     [bold cyan]{avg_time_str}[/]"),
             Label(f"LARGEST TRACK SIZE:     [bold magenta]{largest_mb:.2f} MB[/]"),
             Static("", id="spacer-2"),
