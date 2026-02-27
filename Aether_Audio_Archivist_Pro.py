@@ -176,7 +176,7 @@ class Archivist(Screen):
                 
                 # Dismiss cookie wall
                 try: await page.click('button#onetrust-accept-btn-handler', timeout=3000)
-                except: pass
+                except (ValueError, AttributeError): pass
 
                 await page.wait_for_selector('[data-testid="tracklist-row"]', timeout=30000)
                 
@@ -194,7 +194,7 @@ class Archivist(Screen):
                     if rows:
                         try:
                             await rows[-1].scroll_into_view_if_needed()
-                        except:
+                        except (ValueError, AttributeError):
                             pass
                     
                     # Additional scrolling to ensure we hit the bottom
@@ -260,7 +260,7 @@ class Archivist(Screen):
                     self.tracks[i]["status"] = "QUEUED"
                     try:
                         table.update_cell(str(i), status_key, "[white]QUEUED[/]")
-                    except: pass
+                    except (ValueError, AttributeError): pass
                 
                 self.log_kernel("VECTORS SYNCHRONIZED. READY FOR INGESTION.")
             except Exception as e:
@@ -283,7 +283,7 @@ class Archivist(Screen):
             self.tracks[idx]["selected"] = not self.tracks[idx]["selected"]
             val = "[bold green][X][/]" if self.tracks[idx]["selected"] else "[ ]"
             table.update_cell(row_key, self.col_keys["SEL"], val)
-        except: pass
+        except (ValueError, AttributeError): pass
 
     def action_select_all(self) -> None:
         table = self.query_one(DataTable)
@@ -291,7 +291,7 @@ class Archivist(Screen):
         for i, track in enumerate(self.tracks):
             track["selected"] = True
             try: table.update_cell(str(i), sel_key, "[bold green][X][/]")
-            except: pass
+            except (ValueError, AttributeError): pass
         self.log_kernel("GLOBAL SELECTION: ALL VECTORS ENGAGED.")
 
     def action_select_none(self) -> None:
@@ -300,7 +300,7 @@ class Archivist(Screen):
         for i, track in enumerate(self.tracks):
             track["selected"] = False
             try: table.update_cell(str(i), sel_key, "[ ]")
-            except: pass
+            except (ValueError, AttributeError): pass
         self.log_kernel("GLOBAL SELECTION: ALL VECTORS DISENGAGED.")
 
     def action_start_ingest(self) -> None:
@@ -345,7 +345,7 @@ class Archivist(Screen):
                         proc = await asyncio.create_subprocess_exec(*search_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
                         stdout, _ = await proc.communicate()
                         results = [json.loads(line) for line in stdout.decode().strip().split("\n") if line]
-                    except:
+                    except (ValueError, AttributeError):
                         continue
                 
                 spotify_dur = self.parse_duration(track['duration'])
@@ -446,17 +446,20 @@ class Archivist(Screen):
         table = self.query_one(DataTable)
         try:
             table.update_cell(str(message.index), self.col_keys["STATUS"], f"[{message.color}]{message.status}[/]")
-        except: pass
+        except (ValueError, AttributeError): pass
     
     def on_resolve_failed(self, message: ResolveFailed) -> None:
         self.app.push_screen(ResolveMatchScreen(message.index, message.track, message.results, self))
 
-    def parse_duration(self, d_str):
+    @staticmethod
+    @staticmethod
+    @staticmethod
+    def parse_duration(d_str):
         try:
             parts = d_str.split(":")
             if len(parts) == 2: return int(parts[0]) * 60 + int(parts[1])
             if len(parts) == 3: return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
-        except: return 0
+        except (ValueError, AttributeError): return 0
         return 0
     
     def save_mission_report(self, total_time):
