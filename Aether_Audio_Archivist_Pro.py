@@ -40,6 +40,7 @@ bootstrap_dependencies()
 
 from textual.app import App, ComposeResult
 from textual.widgets import Header, Footer, DataTable, Log, Input, Button, Label, Static, Select
+from textual.widgets.data_table import CellDoesNotExist
 from textual.containers import Container, Vertical, Horizontal
 from textual.binding import Binding
 from textual import work, on
