@@ -4,6 +4,15 @@
 
 A high-performance, multithreaded Spotify-to-Library ingestion engine. ARCHIVIST PRO leverages Playwright for surgical meta-data harvesting and `yt-dlp` + `ffmpeg` for high-fidelity audio extraction (320kbps).
 
+## 🚀 Quick Start
+
+### Clone the Repository
+
+```powershell
+git clone https://github.com/thebubbsy/Aether_Audio_Archivist_Pro.git
+cd Aether_Audio_Archivist_Pro
+```
+
 ## 🚀 Key Features
 
 - **Surgical Meta-Data Harvesting:** Uses Playwright to scrape track info directly from Spotify playlists.
