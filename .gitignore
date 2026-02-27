@@ -6,3 +6,8 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+Audio_Libraries/
+*.diff
+prs*.json
+mission_history.json
+*.pdf

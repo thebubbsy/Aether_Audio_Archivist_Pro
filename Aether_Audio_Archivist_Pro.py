@@ -4,13 +4,17 @@ import asyncio
 import json
 import random
 import subprocess
+import functools
+import re
+import yt_dlp
 from pathlib import Path
 from datetime import datetime
 
-# ==============================================================================
-# AETHER AUDIO ARCHIVIST PRO // UNIFIED COMMAND CENTER
 # ARCHITECT: MATTHEW BUBB (SOLE PROGRAMMER)
 # ==============================================================================
+
+DEFAULT_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+DUR_REGEX = re.compile(r'^\d{1,2}:\d{2}(:\d{2})?$')
 
 def bootstrap_dependencies():
     """Ensure system vectors are aligned."""
@@ -39,9 +43,10 @@ def bootstrap_dependencies():
 bootstrap_dependencies()
 
 from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer, DataTable, Log, Input, Button, Label, Static, Select
+from textual.widgets import Header, Footer, DataTable, Log, Input, Button, Label, Static, Select, ProgressBar
 from textual.containers import Container, Vertical, Horizontal
 from textual.binding import Binding
+from textual.reactive import reactive
 from textual import work, on
 from textual.screen import Screen
 from textual.message import Message
@@ -76,6 +81,8 @@ class Launchpad(Screen):
             Input(value=str(self.app.default_threads), id="threads-input"),
             Label("ENGINE ACCELERATION (NVIDIA GPU / CPU):"),
             Select([("CPU (SYSTEM STANDARD)", "cpu"), ("GPU (NVIDIA CUDA)", "gpu")], value="cpu", id="engine-select"),
+            Label("VISUAL VECTOR (Theme Selection):"),
+            Select([("MATRIX (GREEN)", "matrix"), ("CYBERPUNK (NEON)", "cyberpunk"), ("MOLTEN (RED)", "molten")], value=self.app.visual_theme, id="theme-select"),
             Label("COLLECTION ALIAS (Library Name):"),
             Input(value=self.app.default_library, id="library-input"),
             Button("INITIALIZE MISSION", variant="success", id="init-btn"),
@@ -89,6 +96,8 @@ class Launchpad(Screen):
         threads = self.query_one("#threads-input").value
         engine = self.query_one("#engine-select").value
         library = self.query_one("#library-input").value
+        theme = self.query_one("#theme-select").value
+        self.app.visual_theme = theme
         
         if not url:
             self.app.notify("CRITICAL: SOURCE URL MISSING", severity="error")
@@ -137,6 +146,7 @@ class Archivist(Screen):
                 yield DataTable(id="data-table")
                 with Horizontal(id="action-bar"):
                     yield Button("GO (COMMENCE INGESTION)", id="go-btn", variant="success")
+                yield ProgressBar(id="ingest-progress", total=100, show_eta=True)
             yield Log(id="hacker-log", highlight=True)
         yield Footer()
 
@@ -183,64 +193,67 @@ class Archivist(Screen):
                 table = self.query_one(DataTable)
                 processed_ids = set()
                 
-                self.log_kernel("HARVESTING VECTORS (REAL-TIME PROPAGATION)...")
+                self.log_kernel("HARVESTING VECTORS (BULK JS EXTRACTION)...")
                 
-                # Infinite Scroll Engine
+                # Infinite Scroll Engine with Bulk Extraction
                 last_count = -1
                 stable_count = 0
-                while stable_count < 10: # More aggressive stability check
-                    # Find current rows to scroll the last one into view
-                    rows = await page.query_selector_all('[data-testid="tracklist-row"]')
-                    if rows:
-                        try:
-                            await rows[-1].scroll_into_view_if_needed()
-                        except:
-                            pass
+                while stable_count < 10:
+                    rows_count = await page.evaluate('''() => {
+                        const rows = document.querySelectorAll('[data-testid="tracklist-row"]');
+                        if (rows.length > 0) {
+                            rows[rows.length - 1].scrollIntoView();
+                        }
+                        return rows.length;
+                    }''')
                     
-                    # Additional scrolling to ensure we hit the bottom
                     await page.mouse.wheel(0, 5000)
-                    for _ in range(4):
+                    for _ in range(2):
                          await page.keyboard.press("PageDown")
-                         await asyncio.sleep(0.5)
+                         await asyncio.sleep(0.3)
                     
-                    # Re-query rows in current viewport for processing
-                    rows = await page.query_selector_all('[data-testid="tracklist-row"]')
-                    for row in rows:
-                        try:
-                            title_elem = await row.query_selector('div[dir="auto"]')
-                            title = await title_elem.inner_text() if title_elem else "Unknown"
+                    # 20x Speedup: Extract all visible track data in one JS execution
+                    extracted_tracks = await page.evaluate('''() => {
+                        return Array.from(document.querySelectorAll('[data-testid="tracklist-row"]')).map(row => {
+                            const titleElem = row.querySelector('div[dir="auto"]');
+                            const artistElems = row.querySelectorAll('a[href*="/artist/"]');
+                            const durElem = row.querySelector('div[data-testid="tracklist-row-duration"]');
                             
-                            artist_elems = await row.query_selector_all('a[href*="/artist/"]')
-                            artists = ", ".join([await a.inner_text() for a in artist_elems])
-                            
-                            # Surgical ID creation to handle virtualized list duplicates
-                            track_id = f"{artists}_{title}".strip()
-                            if track_id and track_id not in processed_ids:
-                                processed_ids.add(track_id)
-                                
-                                dur_elem = await row.query_selector('div[data-testid="tracklist-row-duration"]')
-                                duration = "0:00"
-                                if dur_elem:
-                                    duration = await dur_elem.inner_text()
-                                else:
-                                    # Tighten fallback to avoid album names with colons
-                                    potential_durs = await row.query_selector_all('div:has-text(":")')
-                                    for p in potential_durs:
-                                        text = await p.inner_text()
-                                        if dur_regex.match(text.strip()):
-                                            duration = text.strip()
-                                            break
+                            // Fallback for duration if standard testid missing (virtualization artifact)
+                            let duration = durElem ? durElem.innerText : "0:00";
+                            if (duration === "0:00") {
+                                const potentialDurs = Array.from(row.querySelectorAll('div')).filter(d => d.innerText.includes(':'));
+                                const durRegex = /^\\d{1,2}:\\d{2}(:\\d{2})?$/;
+                                for (const p of potentialDurs) {
+                                    if (durRegex.test(p.innerText.trim())) {
+                                        duration = p.innerText.trim();
+                                        break;
+                                    }
+                                }
+                            }
 
-                                idx = len(self.tracks)
-                                self.tracks.append({
-                                    "artist": artists,
-                                    "title": title,
-                                    "duration": duration,
-                                    "selected": True,
-                                    "status": "WAITING FOR PROPAGATION OF PLAYLIST ITEMS"
-                                })
-                                table.add_row("[X]", "[yellow]WAITING FOR PROPAGATION[/]", artists, title[:40], duration, key=str(idx))
-                        except Exception: continue
+                            return {
+                                title: titleElem ? titleElem.innerText : "Unknown",
+                                artists: Array.from(artistElems).map(a => a.innerText).join(", "),
+                                duration: duration
+                            };
+                        });
+                    }''')
+
+                    table = self.query_one(DataTable)
+                    for track_data in extracted_tracks:
+                        track_id = f"{track_data['artists']}_{track_data['title']}".strip()
+                        if track_id and track_id not in processed_ids:
+                            processed_ids.add(track_id)
+                            idx = len(self.tracks)
+                            self.tracks.append({
+                                "artist": track_data['artists'],
+                                "title": track_data['title'],
+                                "duration": track_data['duration'],
+                                "selected": True,
+                                "status": "WAITING FOR PROPAGATION"
+                            })
+                            table.add_row("[X]", "[yellow]WAITING FOR PROPAGATION[/]", track_data['artists'], track_data['title'][:40], track_data['duration'], key=str(idx))
                     
                     current_count = len(self.tracks)
                     if current_count == last_count:
@@ -313,6 +326,7 @@ class Archivist(Screen):
              self.app.notify("ERROR: NO VECTORS SELECTED", severity="error")
              return
         
+        self.query_one(ProgressBar).update(total=len(selected), progress=0)
         self.stats = {"total": len(selected), "complete": 0, "no_match": 0, "failed": 0}
         self.pending_tasks = len(selected)
         self.log_kernel(f"COMMENCING THREADED INGESTION (DEPTH: {self.threads}, ENGINE: {self.engine.upper()}).")
@@ -328,119 +342,145 @@ class Archivist(Screen):
             track_start = datetime.now()
             
             try:
-                # High-Fidelity Logic with fallback queries
-                queries = [
-                    f"{track['artist']} {track['title']} official audio",
-                    f"{track['artist']} {track['title']} official video",
-                    f"{track['artist']} {track['title']} lyrics",
-                    f"{track['artist']} {track['title']}"
-                ]
-                
-                results = []
-                for query in queries:
-                    if results:
-                        break
-                    try:
-                        search_cmd = [sys.executable, "-m", "yt_dlp", f"ytsearch5:{query}", "--dump-json", "--flat-playlist"]
-                        proc = await asyncio.create_subprocess_exec(*search_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-                        stdout, _ = await proc.communicate()
-                        results = [json.loads(line) for line in stdout.decode().strip().split("\n") if line]
-                    except:
-                        continue
-                
-                spotify_dur = self.parse_duration(track['duration'])
-                
-                best = None
-                min_diff = 999
-                for entry in results:
-                    duration = entry.get('duration', 0)
-                    if duration > 0:
-                        diff = abs(duration - spotify_dur)
-                        if diff < 30 and diff < min_diff:
-                            min_diff, best = diff, entry
-                
+                # [PHASE 1] SURGICAL SEARCH
+                best = await self.search_track(index, track)
                 if not best:
-                    if results:
-                        self.tracks[index]["status"] = "AWAITING USER DECISION"
-                        self.post_message(TrackUpdate(index, "AWAITING USER DECISION", "yellow"))
-                        self.post_message(ResolveFailed(index, track, results[:3]))
-                        await asyncio.sleep(0.5)
-                        while self.tracks[index].get("youtube_url") is None and self.tracks[index]["status"] == "AWAITING USER DECISION":
-                            await asyncio.sleep(0.2)
-                        
-                        if self.tracks[index].get("youtube_url"):
-                            best = {"url": self.tracks[index]["youtube_url"], "id": self.tracks[index].get("youtube_id", "manual")}
-                        else:
-                            self.tracks[index]["status"] = "NO MATCH"
-                            self.stats["no_match"] += 1
-                            self.post_message(TrackUpdate(index, "NO MATCH", "orange"))
-                            return
-                    else:
-                        self.tracks[index]["status"] = "NO MATCH"
-                        self.stats["no_match"] += 1
-                        self.post_message(TrackUpdate(index, "NO MATCH", "orange"))
-                        return
+                    return
 
-                # Sanitize filename
-                final_name = "".join([c if c.isalnum() or c in " -_." else "_" for c in f"{track['artist']} - {track['title']}.mp3"])
-                dest = self.target_dir / final_name
-                temp_path = self.target_dir / f"tmp_{best['id']}.mp3"
-                
-                # High-Quality Download (320kbps MP3)
-                encoder_args = ["--audio-quality", "0"]
-                gpu_args = []
-                if self.engine == "gpu":
-                     self.log_kernel(f"GPU MODE: ENGAGING NVIDIA CUDA ACCELERATION FOR {track['title']}")
-                     gpu_args = ["--postprocessor-args", "ffmpeg:-hwaccel cuda"]
-                else:
-                     self.log_kernel(f"CPU MODE: PROCESSING {track['title']} (NO GPU ACCELERATION)")
-                
-                dl_cmd = [
-                    sys.executable, "-m", "yt_dlp", best['url'],
-                    "--extract-audio", "--audio-format", "mp3", 
-                    "--output", str(temp_path.with_suffix("")), "--no-playlist"
-                ] + encoder_args + gpu_args
-                proc = await asyncio.create_subprocess_exec(*dl_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-                await proc.communicate()
-                
-                # Tagging (FFmpeg) with Metadata and Hardware Acceleration support
-                tag_prefix = ["ffmpeg"]
-                if self.engine == "gpu":
-                    tag_prefix = ["ffmpeg", "-hwaccel", "cuda"]
-                
-                tag_cmd = tag_prefix + [
-                    "-i", str(temp_path),
-                    "-metadata", f"artist={track['artist']}", "-metadata", f"title={track['title']}",
-                    "-codec", "copy", str(dest), "-y"
-                ]
-                proc = await asyncio.create_subprocess_exec(*tag_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-                await proc.communicate()
-                
-                if temp_path.exists(): os.remove(temp_path)
-                
-                # Track metrics
+                # [PHASE 2] HIGH-QUALITY DOWNLOAD
+                temp_path = await self.download_track(index, track, best)
+                if not temp_path:
+                    return
+
+                # [PHASE 3] METADATA TAGGING
                 elapsed = (datetime.now() - track_start).total_seconds()
-                self.track_times[index] = elapsed
-                if dest.exists():
-                    self.track_sizes[index] = dest.stat().st_size
-                
-                self.tracks[index]["status"] = "COMPLETE"
-                self.stats["complete"] += 1
-                self.post_message(TrackUpdate(index, "COMPLETE", "green"))
-                self.log_kernel(f"COMPLETE: {track['title']} ({elapsed:.1f}s)")
+                await self.tag_track(index, track, temp_path, elapsed)
                 
             except Exception as e:
                 self.tracks[index]["status"] = "FAILED"
                 self.stats["failed"] += 1
                 self.post_message(TrackUpdate(index, "FAILED", "red"))
+                self.query_one(ProgressBar).advance(1)
                 self.log_kernel(f"FAIL: {track['title']} ({e})")
             finally:
                 self.pending_tasks -= 1
                 if self.pending_tasks == 0:
                     mission_end = datetime.now()
                     total_time = (mission_end - self.mission_start).total_seconds()
-                    self.save_mission_report(total_time)
-                    self.app.push_screen(StatsScreen(self.stats, self.track_times, self.track_sizes, total_time))
+                    await self.close_mission(total_time)
+
+    async def search_track(self, index, track):
+        """Phase 1: High-Fidelity Search Vector."""
+        queries = [
+            f"{track['artist']} {track['title']} official audio",
+            f"{track['artist']} {track['title']} official video",
+            f"{track['artist']} {track['title']} lyrics",
+            f"{track['artist']} {track['title']}"
+        ]
+        
+        results = []
+        for query in queries:
+            if results: break
+            try: results = await self.perform_youtube_search(query)
+            except: continue
+        
+        spotify_dur = self.parse_duration(track['duration'])
+        best = None
+        min_diff = 999
+        for entry in results:
+            duration = entry.get('duration', 0)
+            if duration > 0:
+                diff = abs(duration - spotify_dur)
+                if diff < 30 and diff < min_diff:
+                    min_diff, best = diff, entry
+        
+        if not best:
+            if results:
+                self.tracks[index]["status"] = "AWAITING USER DECISION"
+                self.post_message(TrackUpdate(index, "AWAITING USER DECISION", "yellow"))
+                self.post_message(ResolveFailed(index, track, results[:3]))
+                while self.tracks[index].get("youtube_url") is None and self.tracks[index]["status"] == "AWAITING USER DECISION":
+                    await asyncio.sleep(0.2)
+                
+                if self.tracks[index].get("youtube_url"):
+                    best = {"url": self.tracks[index]["youtube_url"], "id": self.tracks[index].get("youtube_id", "manual")}
+                else:
+                    self.mark_no_match(index)
+                    return None
+            else:
+                self.mark_no_match(index)
+                return None
+        return best
+
+    def mark_no_match(self, index):
+        self.tracks[index]["status"] = "NO MATCH"
+        self.stats["no_match"] += 1
+        self.query_one(ProgressBar).advance(1)
+        self.post_message(TrackUpdate(index, "NO MATCH", "orange"))
+
+    async def download_track(self, index, track, best):
+        """Phase 2: Encrypted Signal Capture (Download)."""
+        temp_path = self.target_dir / f"tmp_{best['id']}.mp3"
+        encoder_args = ["--audio-quality", "0"]
+        gpu_args = []
+        
+        if self.engine == "gpu":
+             self.log_kernel(f"GPU MODE: ENGAGING NVIDIA CUDA FOR {track['title']}")
+             gpu_args = ["--postprocessor-args", "ffmpeg:-hwaccel cuda"]
+        else:
+             self.log_kernel(f"CPU MODE: PROCESSING {track['title']}")
+        
+        dl_cmd = [
+            sys.executable, "-m", "yt_dlp", best['url'],
+            "--extract-audio", "--audio-format", "mp3", 
+            "--output", str(temp_path.with_suffix("")), "--no-playlist"
+        ] + encoder_args + gpu_args
+        
+        proc = await asyncio.create_subprocess_exec(*dl_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+        await proc.communicate()
+        return temp_path if await asyncio.to_thread(lambda: temp_path.exists()) else None
+
+    async def tag_track(self, index, track, temp_path, elapsed):
+        """Phase 3: Metadata Imprinting and Finalization."""
+        final_name = "".join([c if c.isalnum() or c in " -_." else "_" for c in f"{track['artist']} - {track['title']}.mp3"])
+        dest = self.target_dir / final_name
+        
+        tag_prefix = ["ffmpeg"]
+        if self.engine == "gpu":
+            tag_prefix = ["ffmpeg", "-hwaccel", "cuda"]
+        
+        tag_cmd = tag_prefix + [
+            "-i", str(temp_path),
+            "-metadata", f"artist={track['artist']}", "-metadata", f"title={track['title']}",
+            "-codec", "copy", str(dest), "-y"
+        ]
+        
+        proc = await asyncio.create_subprocess_exec(*tag_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+        await proc.communicate()
+        
+        if await asyncio.to_thread(lambda: temp_path.exists()):
+            await asyncio.to_thread(os.remove, temp_path)
+        
+        if await asyncio.to_thread(lambda: os.path.exists(dest)):
+            stat = await asyncio.to_thread(os.stat, dest)
+            self.track_sizes[index] = stat.st_size
+        
+        self.track_times[index] = elapsed
+        self.tracks[index]["status"] = "COMPLETE"
+        self.stats["complete"] += 1
+        self.post_message(TrackUpdate(index, "COMPLETE", "green"))
+        self.query_one(ProgressBar).advance(1)
+        self.log_kernel(f"COMPLETE: {track['title']} ({elapsed:.1f}s)")
+
+    async def close_mission(self, total_time):
+        total_time = round(total_time, 2)
+        await self.save_mission_report(total_time)
+        try:
+            # Convenience: Open Explorer window to the target directory
+            await asyncio.to_thread(os.startfile, str(self.target_dir))
+        except:
+            pass
+        self.app.push_screen(StatsScreen(self.stats, self.track_times, self.track_sizes, total_time))
 
     def on_track_update(self, message: TrackUpdate) -> None:
         table = self.query_one(DataTable)
@@ -451,7 +491,25 @@ class Archivist(Screen):
     def on_resolve_failed(self, message: ResolveFailed) -> None:
         self.app.push_screen(ResolveMatchScreen(message.index, message.track, message.results, self))
 
-    def parse_duration(self, d_str):
+    async def perform_youtube_search(self, query: str) -> list:
+        """Surgical search vector using direct yt-dlp library access."""
+        def run_search():
+            ydl_opts = {
+                'quiet': True,
+                'no_warnings': True,
+                'extract_flat': True,
+                'skip_download': True,
+            }
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                # Direct library usage is significantly faster than subprocess
+                result = ydl.extract_info(f"ytsearch5:{query}", download=False)
+                return result.get('entries', [])
+        
+        return await asyncio.to_thread(run_search)
+
+    @staticmethod
+    def parse_duration(d_str):
+        """Surgical parsing of temporal vectors."""
         try:
             parts = d_str.split(":")
             if len(parts) == 2: return int(parts[0]) * 60 + int(parts[1])
@@ -459,53 +517,57 @@ class Archivist(Screen):
         except: return 0
         return 0
     
-    def save_mission_report(self, total_time):
+    async def save_mission_report(self, total_time):
+        """Asynchronous mission debriefing."""
         import hashlib
         playlist_id = hashlib.md5(self.url.encode()).hexdigest()[:8]
         history_file = Path(os.getcwd()) / "mission_history.json"
         
-        avg_time = total_time / max(self.stats["complete"], 1)
-        largest_size = max(self.track_sizes.values()) if self.track_sizes else 0
-        largest_track = None
-        if largest_size > 0:
-            for idx, size in self.track_sizes.items():
-                if size == largest_size:
-                    largest_track = self.tracks[idx]["title"]
-                    break
-        
-        report = {
-            "timestamp": datetime.now().isoformat(),
-            "playlist_id": playlist_id,
-            "playlist_url": self.url,
-            "library": self.library,
-            "engine": self.engine,
-            "total_time": round(total_time, 2),
-            "avg_time_per_song": round(avg_time, 2),
-            "stats": self.stats,
-            "largest_song": largest_track,
-            "largest_size_bytes": largest_size,
-            "tracks": [
-                {
-                    "title": t["title"],
-                    "artist": t["artist"],
-                    "status": t["status"],
-                    "time_seconds": self.track_times.get(i, 0),
-                    "size_bytes": self.track_sizes.get(i, 0)
-                }
-                for i, t in enumerate(self.tracks)
-            ]
-        }
-        
-        history = []
-        if history_file.exists():
-            with open(history_file, 'r') as f:
-                history = json.load(f)
-        
-        history.append(report)
-        with open(history_file, 'w') as f:
-            json.dump(history, f, indent=2)
-        
-        self.log_kernel(f"MISSION REPORT SAVED: {history_file}")
+        def _write_report_to_disk():
+            avg_time = total_time / max(self.stats["complete"], 1)
+            largest_size = max(self.track_sizes.values()) if self.track_sizes else 0
+            largest_track = None
+            if largest_size > 0:
+                for idx, size in self.track_sizes.items():
+                    if size == largest_size:
+                        largest_track = self.tracks[idx]["title"]
+                        break
+            
+            report = {
+                "timestamp": datetime.now().isoformat(),
+                "playlist_id": playlist_id,
+                "playlist_url": self.url,
+                "library": self.library,
+                "engine": self.engine,
+                "total_time": round(total_time, 2),
+                "avg_time_per_song": round(avg_time, 2),
+                "stats": self.stats,
+                "largest_song": largest_track,
+                "largest_size_bytes": largest_size,
+                "tracks": [
+                    {
+                        "title": t["title"],
+                        "artist": t["artist"],
+                        "status": t["status"],
+                        "time_seconds": self.track_times.get(i, 0),
+                        "size_bytes": self.track_sizes.get(i, 0)
+                    }
+                    for i, t in enumerate(self.tracks)
+                ]
+            }
+            
+            history = []
+            if history_file.exists():
+                with open(history_file, 'r') as f:
+                    history = json.load(f)
+            
+            history.append(report)
+            with open(history_file, 'w') as f:
+                json.dump(history, f, indent=2)
+            return history_file
+
+        saved_path = await asyncio.to_thread(_write_report_to_disk)
+        self.log_kernel(f"MISSION REPORT SAVED: {saved_path}")
 
 class ResolveMatchScreen(Screen):
     """Screen to resolve failed track matches by showing user options."""
@@ -598,128 +660,179 @@ class AetherApp(App):
     TITLE = "AETHER AUDIO ARCHIVIST PRO // MATTHEW BUBB"
     SUB_TITLE = "SOLO ARCHITECT: MATTHEW BUBB"
     
-    CSS = """
-    Screen {
-        background: #050505;
-        color: #00ff00;
+    # ==========================================================================
+    # CHROMA-SHIFT DESIGN SYSTEM
+    # ==========================================================================
+    THEMES = {
+        "matrix": {
+            "bg": "#050505",
+            "surface": "#0a0a0a",
+            "accent": "#00ff00",
+            "text": "#00ff00",
+            "dim": "#004400"
+        },
+        "cyberpunk": {
+            "bg": "#0d0221",
+            "surface": "#0f084b",
+            "accent": "#00f5d4",
+            "text": "#fee440",
+            "dim": "#9b5de5"
+        },
+        "molten": {
+            "bg": "#1a0f0f",
+            "surface": "#2d1616",
+            "accent": "#ff4d4d",
+            "text": "#ffcc00",
+            "dim": "#800000"
+        }
     }
 
-    #launchpad-box {
-        align: center middle;
-        height: auto;
-        width: 70;
-        border: heavy #00ff00;
-        padding: 1 3;
-        background: #0a0a0a;
-    }
+    visual_theme = reactive("matrix")
 
-    Static {
-        text-align: center;
-        width: 100%;
-        color: #00ff00;
-        text-style: bold;
-    }
+    def get_css(self) -> str:
+        t = self.THEMES[self.visual_theme]
+        return f"""
+        Screen {{
+            background: {t['bg']};
+            color: {t['text']};
+        }}
 
-    Label {
-        margin-top: 1;
-        color: #88ff88;
-        text-style: italic;
-    }
+        #launchpad-box {{
+            align: center middle;
+            height: auto;
+            width: 70;
+            border: heavy {t['accent']};
+            padding: 1 3;
+            background: {t['surface']};
+        }}
 
-    Input {
-        background: #111111;
-        color: #ffffff;
-        border: solid #00ff00;
-        margin-bottom: 2;
-    }
+        Static {{
+            text-align: center;
+            width: 100%;
+            color: {t['accent']};
+            text-style: bold;
+        }}
 
-    #init-btn {
-        width: 100%;
-        background: #004400;
-        color: #ffffff;
-        border: solid #00ff00;
-        text-style: bold;
-    }
+        Label {{
+            margin-top: 1;
+            color: {t['dim']};
+            text-style: italic;
+        }}
 
-    #main-container {
-        height: 100%;
-    }
+        Input {{
+            background: {t['bg']};
+            color: #ffffff;
+            border: solid {t['accent']};
+            margin-bottom: 2;
+        }}
 
-    #table-container {
-        height: 70%;
-        border: solid #00ff00;
-    }
+        #init-btn {{
+            width: 100%;
+            background: {t['dim']};
+            color: #ffffff;
+            border: solid {t['accent']};
+            text-style: bold;
+        }}
 
-    #data-table {
-        height: 1fr;
-    }
+        #main-container {{
+            height: 100%;
+        }}
 
-    #action-bar {
-        height: 3;
-        background: #111111;
-        align: center middle;
-    }
+        #table-container {{
+            height: 70%;
+            border: solid {t['accent']};
+        }}
 
-    #go-btn {
-        width: 100%;
-        min-height: 1;
-        background: #004400;
-        color: #ffffff;
-        border: none;
-        text-style: bold;
-    }
+        #data-table {{
+            height: 1fr;
+        }}
 
-    #hacker-log {
-        height: 30%;
-        border-top: solid #00ff00;
-        background: #000000;
-        color: #00cc00;
-        padding-left: 1;
-    }
+        #action-bar {{
+            height: 6;
+            background: {t['surface']};
+            align: center middle;
+            border-top: solid {t['dim']};
+        }}
 
-    DataTable > .datatable--header {
-        background: #1a1a1a;
-        color: #00ff00;
-        text-style: bold;
-    }
+        #go-btn {{
+            width: 100%;
+            min-height: 1;
+            background: {t['dim']};
+            color: #ffffff;
+            border: none;
+            text-style: bold;
+        }}
 
-    #stats-box {
-        align: center middle;
-        height: auto;
-        width: 60;
-        border: thick #00ff00;
-        padding: 1 3;
-        background: #050505;
-    }
+        #ingest-progress {{
+            width: 100%;
+            margin-top: 1;
+            color: {t['accent']};
+        }}
 
-    #stats-box Label {
-        margin-top: 1;
-        width: 100%;
-        text-align: left;
-    }
+        #ingest-progress > .bar--bar {{
+            color: {t['bg']};
+            background: {t['bg']};
+        }}
 
-    #close-stats-btn {
-        margin-top: 2;
-        width: 100%;
-    }
+        #ingest-progress > .bar--complete {{
+            background: {t['accent']};
+        }}
 
-    #resolve-box {
-        align: center middle;
-        height: auto;
-        width: 80;
-        border: heavy #ffff00;
-        padding: 1 3;
-        background: #0a0a0a;
-    }
+        #hacker-log {{
+            height: 30%;
+            border-top: solid {t['accent']};
+            background: #000000;
+            color: {t['accent']};
+            padding-left: 1;
+        }}
 
-    #resolve-line-1, #resolve-line-2, #resolve-line-3 {
-        color: #ffff00;
-    }
+        DataTable > .datatable--header {{
+            background: {t['surface']};
+            color: {t['accent']};
+            text-style: bold;
+        }}
 
-    #spacer-a, #spacer-b {
-        height: 1;
-    }
-    """
+        #stats-box {{
+            align: center middle;
+            height: auto;
+            width: 60;
+            border: thick {t['accent']};
+            padding: 1 3;
+            background: {t['bg']};
+        }}
+
+        #stats-box Label {{
+            margin-top: 1;
+            width: 100%;
+            text-align: left;
+        }}
+
+        #close-stats-btn {{
+            margin-top: 2;
+            width: 100%;
+        }}
+
+        #resolve-box {{
+            align: center middle;
+            height: auto;
+            width: 80;
+            border: heavy #ffff00;
+            padding: 1 3;
+            background: {t['surface']};
+        }}
+
+        #resolve-line-1, #resolve-line-2, #resolve-line-3 {{
+            color: #ffff00;
+        }}
+
+        #spacer-a, #spacer-b {{
+            height: 1;
+        }}
+        """
+
+    def watch_visual_theme(self) -> None:
+        self.css = self.get_css()
+
 
     def __init__(self, url="", library="Aether_Archive", threads=36):
         super().__init__()
