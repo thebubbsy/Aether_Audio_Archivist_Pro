@@ -195,53 +195,59 @@ class Archivist(Screen):
                         try:
                             await rows[-1].scroll_into_view_if_needed()
                         except:
-                            pass
-                    
-                    # Additional scrolling to ensure we hit the bottom
-                    await page.mouse.wheel(0, 5000)
-                    for _ in range(4):
-                         await page.keyboard.press("PageDown")
-                         await asyncio.sleep(0.5)
-                    
-                    # Re-query rows in current viewport for processing
-                    rows = await page.query_selector_all('[data-testid="tracklist-row"]')
-                    for row in rows:
-                        try:
-                            title_elem = await row.query_selector('div[dir="auto"]')
-                            title = await title_elem.inner_text() if title_elem else "Unknown"
-                            
-                            artist_elems = await row.query_selector_all('a[href*="/artist/"]')
-                            artists = ", ".join([await a.inner_text() for a in artist_elems])
-                            
-                            # Surgical ID creation to handle virtualized list duplicates
-                            track_id = f"{artists}_{title}".strip()
-                            if track_id and track_id not in processed_ids:
-                                processed_ids.add(track_id)
-                                
-                                dur_elem = await row.query_selector('div[data-testid="tracklist-row-duration"]')
-                                duration = "0:00"
-                                if dur_elem:
-                                    duration = await dur_elem.inner_text()
-                                else:
-                                    # Tighten fallback to avoid album names with colons
-                                    potential_durs = await row.query_selector_all('div:has-text(":")')
-                                    for p in potential_durs:
-                                        text = await p.inner_text()
-                                        if dur_regex.match(text.strip()):
-                                            duration = text.strip()
-                                            break
+                                pass
+                extracted_data = await page.evaluate("""
+                        () => {
+                            const rows = Array.from(document.querySelectorAll(047[data-testid="tracklist-row"]047));
+                            return rows.map(row => {
+                                const titleEl = row.querySelector(047div[dir="auto"]047);
+                                const title = titleEl ? titleEl.innerText : "Unknown";
 
-                                idx = len(self.tracks)
-                                self.tracks.append({
-                                    "artist": artists,
-                                    "title": title,
-                                    "duration": duration,
-                                    "selected": True,
-                                    "status": "WAITING FOR PROPAGATION OF PLAYLIST ITEMS"
-                                })
-                                table.add_row("[X]", "[yellow]WAITING FOR PROPAGATION[/]", artists, title[:40], duration, key=str(idx))
-                        except Exception: continue
-                    
+                                    const artistEls = Array.from(row.querySelectorAll(047a[href*="/artist/"]047));
+                                    const artists = artistEls.map(a => a.innerText).join(", ");
+
+                                    let duration = "0:00";
+                                    const durEl = row.querySelector(047div[data-testid="tracklist-row-duration"]047);
+                                    if (durEl) {
+                                        duration = durEl.innerText;
+                                    } else {
+                                        // Fallback: check all divs for time format
+                                        const allDivs = Array.from(row.querySelectorAll(047div047));
+                                        const timeRegex = /^\\d{1,2}:\\d{2}(:\\d{2})?$/;
+                                        for (const div of allDivs) {
+                                            const text = div.innerText.trim();
+                                            if (text.includes(":") && timeRegex.test(text)) {
+                                                duration = text;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    return { title, artists, duration };
+                                });
+                            }
+                """)
+                for item in extracted_data:
+                    try:
+                        title = item["title"]
+                        artists = item["artists"]
+                        duration = item["duration"]
+
+                        # Surgical ID creation to handle virtualized list duplicates
+                        track_id = f"{artists}_{title}".strip()
+                        if track_id and track_id not in processed_ids:
+                            processed_ids.add(track_id)
+
+                            idx = len(self.tracks)
+                            self.tracks.append({
+                                "artist": artists,
+                                "title": title,
+                                "duration": duration,
+                                "selected": True,
+                                "status": "WAITING FOR PROPAGATION OF PLAYLIST ITEMS"
+                            })
+                            table.add_row("[X]", "[yellow]WAITING FOR PROPAGATION[/]", artists, title[:40], duration, key=str(idx))
+                    except Exception: continue
+
                     current_count = len(self.tracks)
                     if current_count == last_count:
                         stable_count += 1
@@ -253,7 +259,7 @@ class Archivist(Screen):
 
                 self.is_scraping = False
                 self.log_kernel(f"COMPLETE HARVEST: {len(self.tracks)} TRACK DESCRIPTORS.")
-                
+
                 # Flip statuses only after full harvest
                 status_key = self.col_keys["STATUS"]
                 for i in range(len(self.tracks)):
