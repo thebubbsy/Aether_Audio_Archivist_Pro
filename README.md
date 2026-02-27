@@ -26,7 +26,9 @@ cd Aether_Audio_Archivist_Pro
 
 Before deploying the Archvist, ensure your environment is prepared:
 
-1. **Python 3.10+**: [Download Python](https://www.python.org/downloads/)
+1. **Python 3.10+**:
+   - **Windows:** `winget install Python.Python.3.12`
+   - **Other:** [Download Python](https://www.python.org/downloads/)
 2. **FFmpeg**: Must be available in your system path.
    - **Windows:** `winget install ffmpeg`
    - **GPU Acceleration:** Requires FFmpeg built with `cuda` support and NVIDIA Drivers installed.
