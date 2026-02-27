@@ -121,33 +121,39 @@ class Archivist(Screen):
         Binding("escape", "app.pop_screen", "Back to Launchpad"),
     ]
 
-    def __init__(self, url: str, library: str, threads: int, engine: str):
+    def __init__(self, url="", library="Aether_Archive", threads=36, engine="cpu"):
         super().__init__()
-        self.url = url
-        self.library = library
+        # Robust Sanitization: Strip accidental leading characters (like 'vhttps')
+        if "http" in url:
+            url = url[url.find("http"):]
+        
+        self.url = url.strip()
+        self.library = "".join([c for c in library if c.isalnum() or c in " -_"]).strip() or "Aether_Archive"
         self.threads = threads
-        self.engine = engine
-        self.tracks = []
+        self.engine = engine # Keep engine as it's passed from Launchpad
         self.target_dir = Path(os.getcwd()) / "Audio_Libraries" / self.library
         self.target_dir.mkdir(parents=True, exist_ok=True)
-        self.semaphore = asyncio.Semaphore(threads)
+        self.tracks = []
         self.is_scraping = True
-        self.col_keys = {}
-        self.stats = {"total": 0, "complete": 0, "no_match": 0, "failed": 0}
-        self.pending_tasks = 0
         self.mission_start = datetime.now()
+        self.stats = {"total": 0, "complete": 0, "no_match": 0, "failed": 0}
         self.track_times = {}
         self.track_sizes = {}
+        self.pending_tasks = 0
+        self.col_keys = {}
+        self.semaphore = asyncio.Semaphore(threads)
+        self.is_ingesting = False
+        self.harvest_dur = 0
 
     def compose(self) -> ComposeResult:
         yield Header()
         with Container(id="main-container"):
             with Vertical(id="table-container"):
                 yield DataTable(id="data-table")
-                with Horizontal(id="action-bar"):
-                    yield Button("GO (COMMENCE INGESTION)", id="go-btn", variant="success")
                 yield ProgressBar(id="ingest-progress", total=100, show_eta=True)
             yield Log(id="hacker-log", highlight=True)
+        with Horizontal(id="action-bar"):
+             yield Button("GO (COMMENCE INGESTION)", id="go-btn", variant="success")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -169,6 +175,7 @@ class Archivist(Screen):
 
     @work(exclusive=True)
     async def scrape_tracks(self):
+        self.harvest_start = datetime.now()
         import re
         dur_regex = re.compile(r'^\d{1,2}:\d{2}(:\d{2})?$')
         self.log_kernel(f"DEPLOYING PROXIES TO: {self.url}")
@@ -210,7 +217,8 @@ class Archivist(Screen):
                     await page.mouse.wheel(0, 5000)
                     for _ in range(2):
                          await page.keyboard.press("PageDown")
-                         await asyncio.sleep(0.3)
+                         # Reduced delay for snappier propagation
+                         await asyncio.sleep(0.1)
                     
                     # 20x Speedup: Extract all visible track data in one JS execution
                     extracted_tracks = await page.evaluate('''() => {
@@ -263,18 +271,18 @@ class Archivist(Screen):
                         last_count = current_count
                         if current_count > 0:
                             self.log_kernel(f"PROPAGATED {current_count} VECTORS...")
+                    
+                    # PROACTIVE MATCHING: Resolve vectors immediately
+                    for i in range(len(self.tracks)):
+                        if self.tracks[i]["status"] == "WAITING FOR PROPAGATION":
+                            self.tracks[i]["status"] = "MATCHING"
+                            table.update_cell(str(i), self.col_keys["STATUS"], "[cyan]MATCHING[/]")
+                            # Run matching in background worker to avoid blocking the harvest loop
+                            self.match_vector(i)
 
                 self.is_scraping = False
-                self.log_kernel(f"COMPLETE HARVEST: {len(self.tracks)} TRACK DESCRIPTORS.")
-                
-                # Flip statuses only after full harvest
-                status_key = self.col_keys["STATUS"]
-                for i in range(len(self.tracks)):
-                    self.tracks[i]["status"] = "QUEUED"
-                    try:
-                        table.update_cell(str(i), status_key, "[white]QUEUED[/]")
-                    except: pass
-                
+                self.harvest_dur = (datetime.now() - self.harvest_start).total_seconds()
+                self.log_kernel(f"COMPLETE HARVEST: {len(self.tracks)} TRACK DESCRIPTORS IN {self.harvest_dur:.1f}s.")
                 self.log_kernel("VECTORS SYNCHRONIZED. READY FOR INGESTION.")
             except Exception as e:
                 self.log_kernel(f"CRITICAL SCRAPE FAILURE: {e}")
@@ -282,6 +290,20 @@ class Archivist(Screen):
                 self.log_kernel(traceback.format_exc())
             finally:
                 await browser.close()
+
+    @work
+    async def match_vector(self, index: int):
+        """Threaded background matching for harvested vectors."""
+        track = self.tracks[index]
+        try:
+            best = await self.search_track(index, track)
+            if best:
+                self.tracks[index]["youtube_best"] = best
+                self.tracks[index]["status"] = "QUEUED"
+                self.post_message(TrackUpdate(index, "QUEUED", "white"))
+        except Exception as e:
+            self.log_kernel(f"MATCH ERROR [{index}]: {e}")
+            self.mark_no_match(index)
 
     @on(Button.Pressed, "#go-btn")
     def start_ingest_btn(self) -> None:
@@ -320,14 +342,24 @@ class Archivist(Screen):
         if self.is_scraping:
             self.app.notify("WARNING: STILL PROXIMITING VECTORS", severity="warning")
             return
+        
+        if self.is_ingesting:
+            self.app.notify("WARNING: INGESTION ALREADY COMMENCED", severity="warning")
+            return
             
         selected = [i for i, t in enumerate(self.tracks) if t["selected"]]
         if not selected:
              self.app.notify("ERROR: NO VECTORS SELECTED", severity="error")
              return
         
+        self.is_ingesting = True
         self.query_one(ProgressBar).update(total=len(selected), progress=0)
-        self.stats = {"total": len(selected), "complete": 0, "no_match": 0, "failed": 0}
+        
+        # Reset stats without replacing the dictionary object reference
+        self.stats.update({"total": len(selected), "complete": 0, "no_match": 0, "failed": 0})
+        self.track_times.clear()
+        self.track_sizes.clear()
+        
         self.pending_tasks = len(selected)
         self.log_kernel(f"COMMENCING THREADED INGESTION (DEPTH: {self.threads}, ENGINE: {self.engine.upper()}).")
         for idx in selected:
@@ -342,19 +374,36 @@ class Archivist(Screen):
             track_start = datetime.now()
             
             try:
-                # [PHASE 1] SURGICAL SEARCH
-                best = await self.search_track(index, track)
+                # [PHASE 1] SURGICAL SEARCH (USE PRE-MATCHED IF AVAILABLE)
+                best = track.get("youtube_best")
                 if not best:
+                    best = await self.search_track(index, track)
+                
+                if not best:
+                    # search_track already called mark_no_match
                     return
 
                 # [PHASE 2] HIGH-QUALITY DOWNLOAD
                 temp_path = await self.download_track(index, track, best)
                 if not temp_path:
+                    # Signal dropout during capture
+                    self.tracks[index]["status"] = "FAILED"
+                    self.stats["failed"] += 1
+                    self.post_message(TrackUpdate(index, "FAILED", "red"))
+                    self.query_one(ProgressBar).advance(1)
+                    self.log_kernel(f"SIGNAL LOSS: {track['title']} (Download Failed)")
                     return
 
                 # [PHASE 3] METADATA TAGGING
                 elapsed = (datetime.now() - track_start).total_seconds()
-                await self.tag_track(index, track, temp_path, elapsed)
+                success = await self.tag_track(index, track, temp_path, elapsed)
+                if not success:
+                    # Tagging failure is still a system failure
+                    self.tracks[index]["status"] = "FAILED"
+                    self.stats["failed"] += 1
+                    self.post_message(TrackUpdate(index, "FAILED", "red"))
+                    self.query_one(ProgressBar).advance(1)
+                    return
                 
             except Exception as e:
                 self.tracks[index]["status"] = "FAILED"
@@ -464,13 +513,16 @@ class Archivist(Screen):
         if await asyncio.to_thread(lambda: os.path.exists(dest)):
             stat = await asyncio.to_thread(os.stat, dest)
             self.track_sizes[index] = stat.st_size
-        
-        self.track_times[index] = elapsed
-        self.tracks[index]["status"] = "COMPLETE"
-        self.stats["complete"] += 1
-        self.post_message(TrackUpdate(index, "COMPLETE", "green"))
-        self.query_one(ProgressBar).advance(1)
-        self.log_kernel(f"COMPLETE: {track['title']} ({elapsed:.1f}s)")
+            self.track_times[index] = elapsed
+            self.tracks[index]["status"] = "COMPLETE"
+            self.stats["complete"] += 1
+            self.post_message(TrackUpdate(index, "COMPLETE", "green"))
+            self.query_one(ProgressBar).advance(1)
+            self.log_kernel(f"COMPLETE: {track['title']} ({elapsed:.1f}s)")
+            return True
+        else:
+            self.log_kernel(f"TAGGING FAILURE: {track['title']} (Output not found)")
+            return False
 
     async def close_mission(self, total_time):
         total_time = round(total_time, 2)
@@ -480,7 +532,7 @@ class Archivist(Screen):
             await asyncio.to_thread(os.startfile, str(self.target_dir))
         except:
             pass
-        self.app.push_screen(StatsScreen(self.stats, self.track_times, self.track_sizes, total_time))
+        self.app.push_screen(StatsScreen(self.stats, self.track_times, self.track_sizes, total_time, self.harvest_dur))
 
     def on_track_update(self, message: TrackUpdate) -> None:
         table = self.query_one(DataTable)
@@ -539,7 +591,8 @@ class Archivist(Screen):
                 "playlist_url": self.url,
                 "library": self.library,
                 "engine": self.engine,
-                "total_time": round(total_time, 2),
+                "harvest_duration_seconds": round(self.harvest_dur, 2),
+                "total_time_seconds": round(total_time, 2),
                 "avg_time_per_song": round(avg_time, 2),
                 "stats": self.stats,
                 "largest_song": largest_track,
@@ -612,12 +665,13 @@ class ResolveMatchScreen(Screen):
 
 class StatsScreen(Screen):
     """The Mission Summary Vanguard."""
-    def __init__(self, stats: dict, track_times: dict = None, track_sizes: dict = None, total_time: float = 0):
+    def __init__(self, stats: dict, track_times: dict = None, track_sizes: dict = None, total_time: float = 0, harvest_dur: float = 0):
         super().__init__()
         self.stats = stats
         self.track_times = track_times or {}
         self.track_sizes = track_sizes or {}
         self.total_time = total_time
+        self.harvest_dur = harvest_dur
 
     def compose(self) -> ComposeResult:
         total = self.stats["total"]
@@ -641,7 +695,8 @@ class StatsScreen(Screen):
             Label(f"NO MATCH FOUND:         [bold yellow]{no_match}[/]"),
             Label(f"SYSTEM FAILURES:        [bold red]{failed}[/]"),
             Static("", id="spacer-1"),
-            Label(f"TOTAL MISSION TIME:     [bold cyan]{time_str}[/]"),
+            Label(f"HARVEST DURATION:      [bold yellow]{self.harvest_dur:.1f}s[/]"),
+            Label(f"INGESTION TIME:        [bold cyan]{time_str}[/]"),
             Label(f"AVG TIME PER TRACK:     [bold cyan]{avg_time_str}[/]"),
             Label(f"LARGEST TRACK SIZE:     [bold magenta]{largest_mb:.2f} MB[/]"),
             Static("", id="spacer-2"),
@@ -748,18 +803,20 @@ class AetherApp(App):
         }}
 
         #action-bar {{
-            height: 6;
-            background: {t['surface']};
-            align: center middle;
-            border-top: solid {t['dim']};
+            dock: bottom;
+            height: 3;
+            background: transparent;
+            align: right middle;
+            padding-right: 2;
+            margin-bottom: 2;
         }}
 
         #go-btn {{
-            width: 100%;
-            min-height: 1;
-            background: {t['dim']};
-            color: #ffffff;
-            border: none;
+            width: 30;
+            min-height: 3;
+            background: {t['accent']};
+            color: {t['bg']};
+            border: heavy {t['dim']};
             text-style: bold;
         }}
 
