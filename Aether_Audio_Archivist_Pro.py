@@ -118,6 +118,9 @@ class Archivist(Screen):
         self.col_keys = {}
         self.stats = {"total": 0, "complete": 0, "no_match": 0, "failed": 0}
         self.pending_tasks = 0
+        self.mission_start = datetime.now()
+        self.track_times = {}
+        self.track_sizes = {}
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -314,6 +317,7 @@ class Archivist(Screen):
             track = self.tracks[index]
             self.tracks[index]["status"] = "ARCHIVING"
             self.post_message(TrackUpdate(index, "ARCHIVING", "cyan"))
+            track_start = datetime.now()
             
             try:
                 # High-Fidelity Logic
@@ -378,10 +382,16 @@ class Archivist(Screen):
                 
                 if temp_path.exists(): os.remove(temp_path)
                 
+                # Track metrics
+                elapsed = (datetime.now() - track_start).total_seconds()
+                self.track_times[index] = elapsed
+                if dest.exists():
+                    self.track_sizes[index] = dest.stat().st_size
+                
                 self.tracks[index]["status"] = "COMPLETE"
                 self.stats["complete"] += 1
                 self.post_message(TrackUpdate(index, "COMPLETE", "green"))
-                self.log_kernel(f"COMPLETE: {track['title']}")
+                self.log_kernel(f"COMPLETE: {track['title']} ({elapsed:.1f}s)")
                 
             except Exception as e:
                 self.tracks[index]["status"] = "FAILED"
@@ -391,7 +401,10 @@ class Archivist(Screen):
             finally:
                 self.pending_tasks -= 1
                 if self.pending_tasks == 0:
-                    self.app.push_screen(StatsScreen(self.stats))
+                    mission_end = datetime.now()
+                    total_time = (mission_end - self.mission_start).total_seconds()
+                    self.save_mission_report(total_time)
+                    self.app.push_screen(StatsScreen(self.stats, self.track_times, self.track_sizes, total_time))
 
     def on_track_update(self, message: TrackUpdate) -> None:
         table = self.query_one(DataTable)
@@ -406,18 +419,76 @@ class Archivist(Screen):
             if len(parts) == 3: return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
         except: return 0
         return 0
+    
+    def save_mission_report(self, total_time):
+        import hashlib
+        playlist_id = hashlib.md5(self.url.encode()).hexdigest()[:8]
+        history_file = Path(os.getcwd()) / "mission_history.json"
+        
+        avg_time = total_time / max(self.stats["complete"], 1)
+        largest_size = max(self.track_sizes.values()) if self.track_sizes else 0
+        largest_track = None
+        if largest_size > 0:
+            for idx, size in self.track_sizes.items():
+                if size == largest_size:
+                    largest_track = self.tracks[idx]["title"]
+                    break
+        
+        report = {
+            "timestamp": datetime.now().isoformat(),
+            "playlist_id": playlist_id,
+            "playlist_url": self.url,
+            "library": self.library,
+            "engine": self.engine,
+            "total_time": round(total_time, 2),
+            "avg_time_per_song": round(avg_time, 2),
+            "stats": self.stats,
+            "largest_song": largest_track,
+            "largest_size_bytes": largest_size,
+            "tracks": [
+                {
+                    "title": t["title"],
+                    "artist": t["artist"],
+                    "status": t["status"],
+                    "time_seconds": self.track_times.get(i, 0),
+                    "size_bytes": self.track_sizes.get(i, 0)
+                }
+                for i, t in enumerate(self.tracks)
+            ]
+        }
+        
+        history = []
+        if history_file.exists():
+            with open(history_file, 'r') as f:
+                history = json.load(f)
+        
+        history.append(report)
+        with open(history_file, 'w') as f:
+            json.dump(history, f, indent=2)
+        
+        self.log_kernel(f"MISSION REPORT SAVED: {history_file}")
 
 class StatsScreen(Screen):
     """The Mission Summary Vanguard."""
-    def __init__(self, stats: dict):
+    def __init__(self, stats: dict, track_times: dict = None, track_sizes: dict = None, total_time: float = 0):
         super().__init__()
         self.stats = stats
+        self.track_times = track_times or {}
+        self.track_sizes = track_sizes or {}
+        self.total_time = total_time
 
     def compose(self) -> ComposeResult:
         total = self.stats["total"]
         complete = self.stats["complete"]
         no_match = self.stats["no_match"]
         failed = self.stats["failed"]
+        
+        avg_time = self.total_time / max(complete, 1)
+        largest_size = max(self.track_sizes.values()) if self.track_sizes else 0
+        largest_mb = largest_size / (1024 * 1024)
+        
+        time_str = f"{int(self.total_time // 60)}m {int(self.total_time % 60)}s"
+        avg_time_str = f"{int(avg_time // 60)}m {int(avg_time % 60)}s" if avg_time > 0 else "0s"
         
         yield Container(
             Static("==================================================", id="stats-line-1"),
@@ -427,6 +498,12 @@ class StatsScreen(Screen):
             Label(f"SUCCESSFULLY ARCHIVED:  [bold green]{complete}[/]"),
             Label(f"NO MATCH FOUND:         [bold yellow]{no_match}[/]"),
             Label(f"SYSTEM FAILURES:        [bold red]{failed}[/]"),
+            Static("", id="spacer-1"),
+            Label(f"TOTAL MISSION TIME:     [bold cyan]{time_str}[/]"),
+            Label(f"AVG TIME PER TRACK:     [bold cyan]{avg_time_str}[/]"),
+            Label(f"LARGEST TRACK SIZE:     [bold magenta]{largest_mb:.2f} MB[/]"),
+            Static("", id="spacer-2"),
+            Label("[dim]Full report saved to mission_history.json[/]"),
             Button("ACKNOWLEDGMENTS (BACK TO OPS)", variant="primary", id="close-stats-btn"),
             id="stats-box"
         )
