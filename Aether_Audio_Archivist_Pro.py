@@ -24,7 +24,7 @@ def bootstrap_dependencies():
     
     # Playwright browser validation
     try:
-        from playwright.async_api import async_playwright
+        from playwright.async_api import async_playwright, Error as PlaywrightError, TimeoutError as PlaywrightTimeoutError
         async def check_playwright():
             async with async_playwright() as p:
                 try:
@@ -162,7 +162,7 @@ class Archivist(Screen):
         import re
         dur_regex = re.compile(r'^\d{1,2}:\d{2}(:\d{2})?$')
         self.log_kernel(f"DEPLOYING PROXIES TO: {self.url}")
-        from playwright.async_api import async_playwright
+        from playwright.async_api import async_playwright, Error as PlaywrightError, TimeoutError as PlaywrightTimeoutError
         
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
@@ -240,7 +240,11 @@ class Archivist(Screen):
                                     "status": "WAITING FOR PROPAGATION OF PLAYLIST ITEMS"
                                 })
                                 table.add_row("[X]", "[yellow]WAITING FOR PROPAGATION[/]", artists, title[:40], duration, key=str(idx))
-                        except Exception: continue
+                        except (PlaywrightError, PlaywrightTimeoutError, AttributeError):
+                            continue
+                        except Exception as e:
+                            self.log_kernel(f"Row processing error: {e}")
+                            continue
                     
                     current_count = len(self.tracks)
                     if current_count == last_count:
