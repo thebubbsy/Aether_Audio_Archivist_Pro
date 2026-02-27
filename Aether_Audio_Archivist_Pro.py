@@ -2,7 +2,7 @@ import os
 import sys
 import asyncio
 import json
-import random
+
 import subprocess
 from pathlib import Path
 from datetime import datetime
@@ -11,32 +11,6 @@ from datetime import datetime
 # AETHER AUDIO ARCHIVIST PRO // UNIFIED COMMAND CENTER
 # ARCHITECT: MATTHEW BUBB (SOLE PROGRAMMER)
 # ==============================================================================
-
-def bootstrap_dependencies():
-    """Ensure system vectors are aligned."""
-    print("[*] SYNCING SYSTEM VECTORS (BOOTSTRAPPING)...")
-    deps = ["playwright", "yt-dlp", "textual", "rich"]
-    for dep in deps:
-        try:
-            __import__(dep)
-        except ImportError:
-            subprocess.check_call([sys.executable, "-m", "pip", "install", dep, "-q"])
-    
-    # Playwright browser validation
-    try:
-        from playwright.async_api import async_playwright
-        async def check_playwright():
-            async with async_playwright() as p:
-                try:
-                    await p.chromium.launch()
-                except Exception:
-                    subprocess.check_call([sys.executable, "-m", "playwright", "install", "chromium"])
-        asyncio.run(check_playwright())
-    except Exception:
-        pass
-
-# Initialize environment
-bootstrap_dependencies()
 
 from textual.app import App, ComposeResult
 from textual.widgets import Header, Footer, DataTable, Log, Input, Button, Label, Static, Select
