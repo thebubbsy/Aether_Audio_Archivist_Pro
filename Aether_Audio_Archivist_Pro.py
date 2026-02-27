@@ -54,6 +54,14 @@ class TrackUpdate(Message):
         self.color = color
         super().__init__()
 
+class ResolveFailed(Message):
+    """Request user input to resolve a failed match."""
+    def __init__(self, index: int, track: dict, results: list) -> None:
+        self.index = index
+        self.track = track
+        self.results = results
+        super().__init__()
+
 class Launchpad(Screen):
     """The High-Fidelity Command Interface."""
     def compose(self) -> ComposeResult:
@@ -352,10 +360,26 @@ class Archivist(Screen):
                             min_diff, best = diff, entry
                 
                 if not best:
-                    self.tracks[index]["status"] = "NO MATCH"
-                    self.stats["no_match"] += 1
-                    self.post_message(TrackUpdate(index, "NO MATCH", "orange"))
-                    return
+                    if results:
+                        self.tracks[index]["status"] = "AWAITING USER DECISION"
+                        self.post_message(TrackUpdate(index, "AWAITING USER DECISION", "yellow"))
+                        self.post_message(ResolveFailed(index, track, results[:3]))
+                        await asyncio.sleep(0.5)
+                        while self.tracks[index].get("youtube_url") is None and self.tracks[index]["status"] == "AWAITING USER DECISION":
+                            await asyncio.sleep(0.2)
+                        
+                        if self.tracks[index].get("youtube_url"):
+                            best = {"url": self.tracks[index]["youtube_url"], "id": self.tracks[index].get("youtube_id", "manual")}
+                        else:
+                            self.tracks[index]["status"] = "NO MATCH"
+                            self.stats["no_match"] += 1
+                            self.post_message(TrackUpdate(index, "NO MATCH", "orange"))
+                            return
+                    else:
+                        self.tracks[index]["status"] = "NO MATCH"
+                        self.stats["no_match"] += 1
+                        self.post_message(TrackUpdate(index, "NO MATCH", "orange"))
+                        return
 
                 # Sanitize filename
                 final_name = "".join([c if c.isalnum() or c in " -_." else "_" for c in f"{track['artist']} - {track['title']}.mp3"])
@@ -363,12 +387,10 @@ class Archivist(Screen):
                 temp_path = self.target_dir / f"tmp_{best['id']}.mp3"
                 
                 # High-Quality Download (320kbps MP3)
-                # Apply Engine Choice: Injecting Actual NVIDIA GPU Acceleration
                 encoder_args = ["--audio-quality", "0"]
                 gpu_args = []
                 if self.engine == "gpu":
                      self.log_kernel(f"GPU MODE: ENGAGING NVIDIA CUDA ACCELERATION FOR {track['title']}")
-                     # Pass hardware acceleration directly to FFmpeg post-processor in yt-dlp
                      gpu_args = ["--postprocessor-args", "ffmpeg:-hwaccel cuda"]
                 else:
                      self.log_kernel(f"CPU MODE: PROCESSING {track['title']} (NO GPU ACCELERATION)")
@@ -425,6 +447,9 @@ class Archivist(Screen):
         try:
             table.update_cell(str(message.index), self.col_keys["STATUS"], f"[{message.color}]{message.status}[/]")
         except: pass
+    
+    def on_resolve_failed(self, message: ResolveFailed) -> None:
+        self.app.push_screen(ResolveMatchScreen(message.index, message.track, message.results, self))
 
     def parse_duration(self, d_str):
         try:
@@ -481,6 +506,47 @@ class Archivist(Screen):
             json.dump(history, f, indent=2)
         
         self.log_kernel(f"MISSION REPORT SAVED: {history_file}")
+
+class ResolveMatchScreen(Screen):
+    """Screen to resolve failed track matches by showing user options."""
+    def __init__(self, index: int, track: dict, results: list, parent: Screen):
+        super().__init__()
+        self.index = index
+        self.track = track
+        self.results = results
+        self.parent = parent
+
+    def compose(self) -> ComposeResult:
+        yield Header()
+        with Container(id="resolve-box"):
+            yield Static("==================================================", id="resolve-line-1")
+            yield Static("           SEARCH RESULT AMBIGUITY DETECTED        ", id="resolve-line-2")
+            yield Static("==================================================", id="resolve-line-3")
+            yield Label(f"[bold cyan]{self.track['artist']} - {self.track['title']}[/]")
+            yield Label("[white]Select which result matches this song:[/]")
+            yield Static("", id="spacer-a")
+            
+            for i, result in enumerate(self.results, 1):
+                title = result.get('title', 'Unknown')[:60]
+                duration = result.get('duration', 0)
+                dur_str = f"{int(duration // 60)}:{int(duration % 60):02d}"
+                yield Button(f"[{i}] {title} ({dur_str})", id=f"opt-{i}", variant="primary" if i == 1 else "default")
+            
+            yield Static("", id="spacer-b")
+            yield Button("[0] SKIP (Mark as No Match)", id="opt-0", variant="error")
+        yield Footer()
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        btn_id = event.button.id
+        if btn_id and btn_id.startswith("opt-"):
+            choice = int(btn_id.split("-")[1])
+            if choice == 0:
+                self.parent.tracks[self.index]["youtube_url"] = None
+            elif 1 <= choice <= len(self.results):
+                selected = self.results[choice - 1]
+                self.parent.tracks[self.index]["youtube_url"] = selected.get('url')
+                self.parent.tracks[self.index]["youtube_id"] = selected.get('id')
+            self.app.pop_screen()
 
 class StatsScreen(Screen):
     """The Mission Summary Vanguard."""
@@ -635,6 +701,23 @@ class AetherApp(App):
     #close-stats-btn {
         margin-top: 2;
         width: 100%;
+    }
+
+    #resolve-box {
+        align: center middle;
+        height: auto;
+        width: 80;
+        border: heavy #ffff00;
+        padding: 1 3;
+        background: #0a0a0a;
+    }
+
+    #resolve-line-1, #resolve-line-2, #resolve-line-3 {
+        color: #ffff00;
+    }
+
+    #spacer-a, #spacer-b {
+        height: 1;
     }
     """
 
