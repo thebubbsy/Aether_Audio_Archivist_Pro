@@ -40,7 +40,7 @@ Copy and paste the following block into your PowerShell terminal:
 
 ```powershell
 # 1. Install core dependencies
-pip install playwright yt-dlp textual rich
+pip install -r requirements.txt
 
 # 2. Setup browser environment
 playwright install chromium
