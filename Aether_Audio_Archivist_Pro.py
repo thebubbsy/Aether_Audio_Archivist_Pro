@@ -21,7 +21,7 @@ def bootstrap_dependencies():
             __import__(dep)
         except ImportError:
             subprocess.check_call([sys.executable, "-m", "pip", "install", dep, "-q"])
-    
+
     # Playwright browser validation
     try:
         from playwright.async_api import async_playwright
@@ -76,6 +76,8 @@ class Launchpad(Screen):
             Input(value=str(self.app.default_threads), id="threads-input"),
             Label("ENGINE ACCELERATION (NVIDIA GPU / CPU):"),
             Select([("CPU (SYSTEM STANDARD)", "cpu"), ("GPU (NVIDIA CUDA)", "gpu")], value="cpu", id="engine-select"),
+            Label("VISUAL THEME (CHROMA-SHIFT):"),
+            Select([("MATRIX (DEFAULT)", "theme-matrix"), ("CYBERPUNK (NEON)", "theme-cyberpunk"), ("MOLTEN (CORE)", "theme-molten")], value="theme-matrix", id="theme-select"),
             Label("COLLECTION ALIAS (Library Name):"),
             Input(value=self.app.default_library, id="library-input"),
             Button("INITIALIZE MISSION", variant="success", id="init-btn"),
@@ -83,27 +85,37 @@ class Launchpad(Screen):
         )
         yield Footer()
 
+    def on_mount(self) -> None:
+        self.add_class(self.app.app_visual_theme)
+
+    @on(Select.Changed, "#theme-select")
+    def on_theme_change(self, event: Select.Changed) -> None:
+        new_theme = str(event.value)
+        self.remove_class(self.app.app_visual_theme)
+        self.app.app_visual_theme = new_theme
+        self.add_class(new_theme)
+
     @on(Button.Pressed, "#init-btn")
     def start_archivist(self) -> None:
         url = self.query_one("#url-input").value
         threads = self.query_one("#threads-input").value
         engine = self.query_one("#engine-select").value
         library = self.query_one("#library-input").value
-        
+
         if not url:
             self.app.notify("CRITICAL: SOURCE URL MISSING", severity="error")
             return
-            
+
         try:
             thread_count = int(threads)
         except ValueError:
             thread_count = 36
-            
+
         self.app.push_screen(Archivist(url, library, thread_count, engine))
 
 class Archivist(Screen):
     """The Operational Command Center."""
-    
+
     BINDINGS = [
         Binding("space", "toggle_select", "Toggle Selected"),
         Binding("a", "select_all", "Select Global All"),
@@ -141,13 +153,25 @@ class Archivist(Screen):
         yield Footer()
 
     def on_mount(self) -> None:
+        self.add_class(self.app.app_visual_theme)
+        self.add_class(self.app.app_visual_theme)
+
+    @on(Select.Changed, "#theme-select")
+    def on_theme_change(self, event: Select.Changed) -> None:
+        new_theme = str(event.value)
+        self.remove_class(self.app.app_visual_theme)
+        self.app.app_visual_theme = new_theme
+        self.add_class(new_theme)
+
+    def on_mount(self) -> None:
+        self.add_class(self.app.app_visual_theme)
         table = self.query_one(DataTable)
         self.col_keys["SEL"] = table.add_column("SEL")
         self.col_keys["STATUS"] = table.add_column("STATUS")
         self.col_keys["ARTIST"] = table.add_column("ARTIST")
         self.col_keys["TITLE"] = table.add_column("TITLE")
         self.col_keys["DUR"] = table.add_column("DUR")
-        
+
         table.cursor_type = "row"
         self.log_kernel("SYSTEM INITIALIZED. WELCOME, ARCHITECT BUBB.")
         self.scrape_tracks()
@@ -163,28 +187,28 @@ class Archivist(Screen):
         dur_regex = re.compile(r'^\d{1,2}:\d{2}(:\d{2})?$')
         self.log_kernel(f"DEPLOYING PROXIES TO: {self.url}")
         from playwright.async_api import async_playwright
-        
+
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
             page = await browser.new_page(
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             )
-            
+
             try:
                 await page.goto(self.url, timeout=60000)
                 await page.wait_for_load_state("load")
-                
+
                 # Dismiss cookie wall
                 try: await page.click('button#onetrust-accept-btn-handler', timeout=3000)
                 except: pass
 
                 await page.wait_for_selector('[data-testid="tracklist-row"]', timeout=30000)
-                
+
                 table = self.query_one(DataTable)
                 processed_ids = set()
-                
+
                 self.log_kernel("HARVESTING VECTORS (REAL-TIME PROPAGATION)...")
-                
+
                 # Infinite Scroll Engine
                 last_count = -1
                 stable_count = 0
@@ -196,28 +220,28 @@ class Archivist(Screen):
                             await rows[-1].scroll_into_view_if_needed()
                         except:
                             pass
-                    
+
                     # Additional scrolling to ensure we hit the bottom
                     await page.mouse.wheel(0, 5000)
                     for _ in range(4):
                          await page.keyboard.press("PageDown")
                          await asyncio.sleep(0.5)
-                    
+
                     # Re-query rows in current viewport for processing
                     rows = await page.query_selector_all('[data-testid="tracklist-row"]')
                     for row in rows:
                         try:
                             title_elem = await row.query_selector('div[dir="auto"]')
                             title = await title_elem.inner_text() if title_elem else "Unknown"
-                            
+
                             artist_elems = await row.query_selector_all('a[href*="/artist/"]')
                             artists = ", ".join([await a.inner_text() for a in artist_elems])
-                            
+
                             # Surgical ID creation to handle virtualized list duplicates
                             track_id = f"{artists}_{title}".strip()
                             if track_id and track_id not in processed_ids:
                                 processed_ids.add(track_id)
-                                
+
                                 dur_elem = await row.query_selector('div[data-testid="tracklist-row-duration"]')
                                 duration = "0:00"
                                 if dur_elem:
@@ -241,7 +265,7 @@ class Archivist(Screen):
                                 })
                                 table.add_row("[X]", "[yellow]WAITING FOR PROPAGATION[/]", artists, title[:40], duration, key=str(idx))
                         except Exception: continue
-                    
+
                     current_count = len(self.tracks)
                     if current_count == last_count:
                         stable_count += 1
@@ -253,7 +277,7 @@ class Archivist(Screen):
 
                 self.is_scraping = False
                 self.log_kernel(f"COMPLETE HARVEST: {len(self.tracks)} TRACK DESCRIPTORS.")
-                
+
                 # Flip statuses only after full harvest
                 status_key = self.col_keys["STATUS"]
                 for i in range(len(self.tracks)):
@@ -261,7 +285,7 @@ class Archivist(Screen):
                     try:
                         table.update_cell(str(i), status_key, "[white]QUEUED[/]")
                     except: pass
-                
+
                 self.log_kernel("VECTORS SYNCHRONIZED. READY FOR INGESTION.")
             except Exception as e:
                 self.log_kernel(f"CRITICAL SCRAPE FAILURE: {e}")
@@ -307,12 +331,12 @@ class Archivist(Screen):
         if self.is_scraping:
             self.app.notify("WARNING: STILL PROXIMITING VECTORS", severity="warning")
             return
-            
+
         selected = [i for i, t in enumerate(self.tracks) if t["selected"]]
         if not selected:
              self.app.notify("ERROR: NO VECTORS SELECTED", severity="error")
              return
-        
+
         self.stats = {"total": len(selected), "complete": 0, "no_match": 0, "failed": 0}
         self.pending_tasks = len(selected)
         self.log_kernel(f"COMMENCING THREADED INGESTION (DEPTH: {self.threads}, ENGINE: {self.engine.upper()}).")
@@ -326,7 +350,7 @@ class Archivist(Screen):
             self.tracks[index]["status"] = "ARCHIVING"
             self.post_message(TrackUpdate(index, "ARCHIVING", "cyan"))
             track_start = datetime.now()
-            
+
             try:
                 # High-Fidelity Logic with fallback queries
                 queries = [
@@ -335,7 +359,7 @@ class Archivist(Screen):
                     f"{track['artist']} {track['title']} lyrics",
                     f"{track['artist']} {track['title']}"
                 ]
-                
+
                 results = []
                 for query in queries:
                     if results:
@@ -347,9 +371,9 @@ class Archivist(Screen):
                         results = [json.loads(line) for line in stdout.decode().strip().split("\n") if line]
                     except:
                         continue
-                
+
                 spotify_dur = self.parse_duration(track['duration'])
-                
+
                 best = None
                 min_diff = 999
                 for entry in results:
@@ -358,7 +382,7 @@ class Archivist(Screen):
                         diff = abs(duration - spotify_dur)
                         if diff < 30 and diff < min_diff:
                             min_diff, best = diff, entry
-                
+
                 if not best:
                     if results:
                         self.tracks[index]["status"] = "AWAITING USER DECISION"
@@ -367,7 +391,7 @@ class Archivist(Screen):
                         await asyncio.sleep(0.5)
                         while self.tracks[index].get("youtube_url") is None and self.tracks[index]["status"] == "AWAITING USER DECISION":
                             await asyncio.sleep(0.2)
-                        
+
                         if self.tracks[index].get("youtube_url"):
                             best = {"url": self.tracks[index]["youtube_url"], "id": self.tracks[index].get("youtube_id", "manual")}
                         else:
@@ -385,7 +409,7 @@ class Archivist(Screen):
                 final_name = "".join([c if c.isalnum() or c in " -_." else "_" for c in f"{track['artist']} - {track['title']}.mp3"])
                 dest = self.target_dir / final_name
                 temp_path = self.target_dir / f"tmp_{best['id']}.mp3"
-                
+
                 # High-Quality Download (320kbps MP3)
                 encoder_args = ["--audio-quality", "0"]
                 gpu_args = []
@@ -394,20 +418,20 @@ class Archivist(Screen):
                      gpu_args = ["--postprocessor-args", "ffmpeg:-hwaccel cuda"]
                 else:
                      self.log_kernel(f"CPU MODE: PROCESSING {track['title']} (NO GPU ACCELERATION)")
-                
+
                 dl_cmd = [
                     sys.executable, "-m", "yt_dlp", best['url'],
-                    "--extract-audio", "--audio-format", "mp3", 
+                    "--extract-audio", "--audio-format", "mp3",
                     "--output", str(temp_path.with_suffix("")), "--no-playlist"
                 ] + encoder_args + gpu_args
                 proc = await asyncio.create_subprocess_exec(*dl_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
                 await proc.communicate()
-                
+
                 # Tagging (FFmpeg) with Metadata and Hardware Acceleration support
                 tag_prefix = ["ffmpeg"]
                 if self.engine == "gpu":
                     tag_prefix = ["ffmpeg", "-hwaccel", "cuda"]
-                
+
                 tag_cmd = tag_prefix + [
                     "-i", str(temp_path),
                     "-metadata", f"artist={track['artist']}", "-metadata", f"title={track['title']}",
@@ -415,20 +439,20 @@ class Archivist(Screen):
                 ]
                 proc = await asyncio.create_subprocess_exec(*tag_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
                 await proc.communicate()
-                
+
                 if temp_path.exists(): os.remove(temp_path)
-                
+
                 # Track metrics
                 elapsed = (datetime.now() - track_start).total_seconds()
                 self.track_times[index] = elapsed
                 if dest.exists():
                     self.track_sizes[index] = dest.stat().st_size
-                
+
                 self.tracks[index]["status"] = "COMPLETE"
                 self.stats["complete"] += 1
                 self.post_message(TrackUpdate(index, "COMPLETE", "green"))
                 self.log_kernel(f"COMPLETE: {track['title']} ({elapsed:.1f}s)")
-                
+
             except Exception as e:
                 self.tracks[index]["status"] = "FAILED"
                 self.stats["failed"] += 1
@@ -447,7 +471,7 @@ class Archivist(Screen):
         try:
             table.update_cell(str(message.index), self.col_keys["STATUS"], f"[{message.color}]{message.status}[/]")
         except: pass
-    
+
     def on_resolve_failed(self, message: ResolveFailed) -> None:
         self.app.push_screen(ResolveMatchScreen(message.index, message.track, message.results, self))
 
@@ -458,12 +482,12 @@ class Archivist(Screen):
             if len(parts) == 3: return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
         except: return 0
         return 0
-    
+
     def save_mission_report(self, total_time):
         import hashlib
         playlist_id = hashlib.md5(self.url.encode()).hexdigest()[:8]
         history_file = Path(os.getcwd()) / "mission_history.json"
-        
+
         avg_time = total_time / max(self.stats["complete"], 1)
         largest_size = max(self.track_sizes.values()) if self.track_sizes else 0
         largest_track = None
@@ -472,7 +496,7 @@ class Archivist(Screen):
                 if size == largest_size:
                     largest_track = self.tracks[idx]["title"]
                     break
-        
+
         report = {
             "timestamp": datetime.now().isoformat(),
             "playlist_id": playlist_id,
@@ -495,16 +519,16 @@ class Archivist(Screen):
                 for i, t in enumerate(self.tracks)
             ]
         }
-        
+
         history = []
         if history_file.exists():
             with open(history_file, 'r') as f:
                 history = json.load(f)
-        
+
         history.append(report)
         with open(history_file, 'w') as f:
             json.dump(history, f, indent=2)
-        
+
         self.log_kernel(f"MISSION REPORT SAVED: {history_file}")
 
 class ResolveMatchScreen(Screen):
@@ -525,16 +549,27 @@ class ResolveMatchScreen(Screen):
             yield Label(f"[bold cyan]{self.track['artist']} - {self.track['title']}[/]")
             yield Label("[white]Select which result matches this song:[/]")
             yield Static("", id="spacer-a")
-            
+
             for i, result in enumerate(self.results, 1):
                 title = result.get('title', 'Unknown')[:60]
                 duration = result.get('duration', 0)
                 dur_str = f"{int(duration // 60)}:{int(duration % 60):02d}"
                 yield Button(f"[{i}] {title} ({dur_str})", id=f"opt-{i}", variant="primary" if i == 1 else "default")
-            
+
             yield Static("", id="spacer-b")
             yield Button("[0] SKIP (Mark as No Match)", id="opt-0", variant="error")
         yield Footer()
+
+    def on_mount(self) -> None:
+        self.add_class(self.app.app_visual_theme)
+        self.add_class(self.app.app_visual_theme)
+
+    @on(Select.Changed, "#theme-select")
+    def on_theme_change(self, event: Select.Changed) -> None:
+        new_theme = str(event.value)
+        self.remove_class(self.app.app_visual_theme)
+        self.app.app_visual_theme = new_theme
+        self.add_class(new_theme)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         btn_id = event.button.id
@@ -557,19 +592,23 @@ class StatsScreen(Screen):
         self.track_sizes = track_sizes or {}
         self.total_time = total_time
 
+
+    def on_mount(self) -> None:
+        self.add_class(self.app.app_visual_theme)
+
     def compose(self) -> ComposeResult:
         total = self.stats["total"]
         complete = self.stats["complete"]
         no_match = self.stats["no_match"]
         failed = self.stats["failed"]
-        
+
         avg_time = self.total_time / max(complete, 1)
         largest_size = max(self.track_sizes.values()) if self.track_sizes else 0
         largest_mb = largest_size / (1024 * 1024)
-        
+
         time_str = f"{int(self.total_time // 60)}m {int(self.total_time % 60)}s"
         avg_time_str = f"{int(avg_time // 60)}m {int(avg_time % 60)}s" if avg_time > 0 else "0s"
-        
+
         yield Container(
             Static("==================================================", id="stats-line-1"),
             Static("         INGESTION MISSION REPORT: COMPLETE       ", id="stats-line-2"),
@@ -594,50 +633,222 @@ class StatsScreen(Screen):
 
 class AetherApp(App):
     """The High-Agency Ingestion Vanguard."""
-    
+
     TITLE = "AETHER AUDIO ARCHIVIST PRO // MATTHEW BUBB"
     SUB_TITLE = "SOLO ARCHITECT: MATTHEW BUBB"
-    
+
     CSS = """
     Screen {
         background: #050505;
         color: #00ff00;
     }
 
+    /* MATRIX THEME (Default) */
+    .theme-matrix {
+        background: #050505;
+        color: #00ff00;
+    }
+    .theme-matrix #launchpad-box {
+        border: heavy #00ff00;
+        background: #0a0a0a;
+    }
+    .theme-matrix Static {
+        color: #00ff00;
+    }
+    .theme-matrix Label {
+        color: #88ff88;
+    }
+    .theme-matrix Input {
+        background: #111111;
+        color: #ffffff;
+        border: solid #00ff00;
+    }
+    .theme-matrix Select {
+        background: #111111;
+        color: #ffffff;
+        border: solid #00ff00;
+    }
+    .theme-matrix #init-btn {
+        background: #004400;
+        color: #ffffff;
+        border: solid #00ff00;
+    }
+    .theme-matrix #table-container {
+        border: solid #00ff00;
+    }
+    .theme-matrix #action-bar {
+        background: #111111;
+    }
+    .theme-matrix #go-btn {
+        background: #004400;
+        color: #ffffff;
+    }
+    .theme-matrix #hacker-log {
+        border-top: solid #00ff00;
+        background: #000000;
+        color: #00cc00;
+    }
+    .theme-matrix DataTable > .datatable--header {
+        background: #1a1a1a;
+        color: #00ff00;
+    }
+    .theme-matrix #stats-box {
+        border: thick #00ff00;
+        background: #050505;
+    }
+    .theme-matrix #close-stats-btn {
+        background: #004400;
+        color: #ffffff;
+        border: solid #00ff00;
+    }
+
+    /* CYBERPUNK THEME */
+    .theme-cyberpunk {
+        background: #050010;
+        color: #00ffff;
+    }
+    .theme-cyberpunk #launchpad-box {
+        border: heavy #ff00ff;
+        background: #100020;
+    }
+    .theme-cyberpunk Static {
+        color: #00ffff;
+    }
+    .theme-cyberpunk Label {
+        color: #e0e0e0;
+    }
+    .theme-cyberpunk Input {
+        background: #200040;
+        color: #ffffff;
+        border: solid #ff00ff;
+    }
+    .theme-cyberpunk Select {
+        background: #200040;
+        color: #ffffff;
+        border: solid #ff00ff;
+    }
+    .theme-cyberpunk #init-btn {
+        background: #800080;
+        color: #ffffff;
+        border: solid #ff00ff;
+    }
+    .theme-cyberpunk #table-container {
+        border: solid #ff00ff;
+    }
+    .theme-cyberpunk #action-bar {
+        background: #200040;
+    }
+    .theme-cyberpunk #go-btn {
+        background: #800080;
+        color: #ffffff;
+    }
+    .theme-cyberpunk #hacker-log {
+        border-top: solid #ff00ff;
+        background: #020005;
+        color: #ff00ff;
+    }
+    .theme-cyberpunk DataTable > .datatable--header {
+        background: #200040;
+        color: #00ffff;
+    }
+    .theme-cyberpunk #stats-box {
+        border: thick #ff00ff;
+        background: #050010;
+    }
+    .theme-cyberpunk #close-stats-btn {
+        background: #800080;
+        color: #ffffff;
+        border: solid #ff00ff;
+    }
+
+    /* MOLTEN THEME */
+    .theme-molten {
+        background: #050000;
+        color: #ff4500;
+    }
+    .theme-molten #launchpad-box {
+        border: heavy #ff4500;
+        background: #100000;
+    }
+    .theme-molten Static {
+        color: #ff4500;
+    }
+    .theme-molten Label {
+        color: #ff8c00;
+    }
+    .theme-molten Input {
+        background: #200000;
+        color: #ffffff;
+        border: solid #ff4500;
+    }
+    .theme-molten Select {
+        background: #200000;
+        color: #ffffff;
+        border: solid #ff4500;
+    }
+    .theme-molten #init-btn {
+        background: #8b0000;
+        color: #ffffff;
+        border: solid #ff4500;
+    }
+    .theme-molten #table-container {
+        border: solid #ff4500;
+    }
+    .theme-molten #action-bar {
+        background: #200000;
+    }
+    .theme-molten #go-btn {
+        background: #8b0000;
+        color: #ffffff;
+    }
+    .theme-molten #hacker-log {
+        border-top: solid #ff4500;
+        background: #050000;
+        color: #ffa500;
+    }
+    .theme-molten DataTable > .datatable--header {
+        background: #200000;
+        color: #ff4500;
+    }
+    .theme-molten #stats-box {
+        border: thick #ff4500;
+        background: #050000;
+    }
+    .theme-molten #close-stats-btn {
+        background: #8b0000;
+        color: #ffffff;
+        border: solid #ff4500;
+    }
+
+    /* General Layout */
     #launchpad-box {
         align: center middle;
         height: auto;
         width: 70;
-        border: heavy #00ff00;
         padding: 1 3;
-        background: #0a0a0a;
     }
 
     Static {
         text-align: center;
         width: 100%;
-        color: #00ff00;
         text-style: bold;
     }
 
     Label {
         margin-top: 1;
-        color: #88ff88;
         text-style: italic;
     }
 
     Input {
-        background: #111111;
-        color: #ffffff;
-        border: solid #00ff00;
+        margin-bottom: 2;
+    }
+
+    Select {
         margin-bottom: 2;
     }
 
     #init-btn {
         width: 100%;
-        background: #004400;
-        color: #ffffff;
-        border: solid #00ff00;
         text-style: bold;
     }
 
@@ -647,7 +858,6 @@ class AetherApp(App):
 
     #table-container {
         height: 70%;
-        border: solid #00ff00;
     }
 
     #data-table {
@@ -656,30 +866,22 @@ class AetherApp(App):
 
     #action-bar {
         height: 3;
-        background: #111111;
         align: center middle;
     }
 
     #go-btn {
         width: 100%;
         min-height: 1;
-        background: #004400;
-        color: #ffffff;
         border: none;
         text-style: bold;
     }
 
     #hacker-log {
         height: 30%;
-        border-top: solid #00ff00;
-        background: #000000;
-        color: #00cc00;
         padding-left: 1;
     }
 
     DataTable > .datatable--header {
-        background: #1a1a1a;
-        color: #00ff00;
         text-style: bold;
     }
 
@@ -687,9 +889,7 @@ class AetherApp(App):
         align: center middle;
         height: auto;
         width: 60;
-        border: thick #00ff00;
         padding: 1 3;
-        background: #050505;
     }
 
     #stats-box Label {
@@ -719,14 +919,22 @@ class AetherApp(App):
     #spacer-a, #spacer-b {
         height: 1;
     }
-    """
+        """
 
     def __init__(self, url="", library="Aether_Archive", threads=36):
         super().__init__()
         self.default_url = url
         self.default_library = library
         self.default_threads = threads
+        self._app_visual_theme = "theme-matrix"
 
+    @property
+    def app_visual_theme(self):
+        return self._app_visual_theme
+
+    @app_visual_theme.setter
+    def app_visual_theme(self, value):
+        self._app_visual_theme = value
     def on_mount(self) -> None:
         self.push_screen(Launchpad())
 
@@ -737,6 +945,6 @@ if __name__ == "__main__":
     parser.add_argument("--library", default="Aether_Archive")
     parser.add_argument("--threads", type=int, default=36)
     args = parser.parse_args()
-    
+
     app = AetherApp(url=args.url, library=args.library, threads=args.threads)
     app.run()
