@@ -39,7 +39,7 @@ def bootstrap_dependencies():
 bootstrap_dependencies()
 
 from textual.app import App, ComposeResult
-from textual.widgets import Header, Footer, DataTable, Log, Input, Button, Label, Static, Select
+from textual.widgets import Header, Footer, DataTable, Log, Input, Button, Label, Static, Select, ProgressBar
 from textual.containers import Container, Vertical, Horizontal
 from textual.binding import Binding
 from textual import work, on
@@ -136,6 +136,7 @@ class Archivist(Screen):
             with Vertical(id="table-container"):
                 yield DataTable(id="data-table")
                 with Horizontal(id="action-bar"):
+                    yield ProgressBar(total=100, show_eta=True, id="progress-bar")
                     yield Button("GO (COMMENCE INGESTION)", id="go-btn", variant="success")
             yield Log(id="hacker-log", highlight=True)
         yield Footer()
@@ -175,7 +176,8 @@ class Archivist(Screen):
                 await page.wait_for_load_state("load")
                 
                 # Dismiss cookie wall
-                try: await page.click('button#onetrust-accept-btn-handler', timeout=3000)
+                try: await page.click("button#onetrust-accept-btn-handler", timeout=3000)
+                except: pass
                 except: pass
 
                 await page.wait_for_selector('[data-testid="tracklist-row"]', timeout=30000)
@@ -283,7 +285,6 @@ class Archivist(Screen):
             self.tracks[idx]["selected"] = not self.tracks[idx]["selected"]
             val = "[bold green][X][/]" if self.tracks[idx]["selected"] else "[ ]"
             table.update_cell(row_key, self.col_keys["SEL"], val)
-        except: pass
 
     def action_select_all(self) -> None:
         table = self.query_one(DataTable)
@@ -316,6 +317,9 @@ class Archivist(Screen):
         self.stats = {"total": len(selected), "complete": 0, "no_match": 0, "failed": 0}
         self.pending_tasks = len(selected)
         self.log_kernel(f"COMMENCING THREADED INGESTION (DEPTH: {self.threads}, ENGINE: {self.engine.upper()}).")
+        pb = self.query_one(ProgressBar)
+        pb.total = len(selected)
+        pb.progress = 0
         for idx in selected:
             self.ingest_worker(idx)
 
@@ -446,7 +450,10 @@ class Archivist(Screen):
         table = self.query_one(DataTable)
         try:
             table.update_cell(str(message.index), self.col_keys["STATUS"], f"[{message.color}]{message.status}[/]")
-        except: pass
+        if message.status in ["COMPLETE", "FAILED", "NO MATCH"]:
+            try: self.query_one(ProgressBar).advance(1)
+        if message.status in ["COMPLETE", "FAILED", "NO MATCH"]:
+            self.query_one(ProgressBar).advance(1)
     
     def on_resolve_failed(self, message: ResolveFailed) -> None:
         self.app.push_screen(ResolveMatchScreen(message.index, message.track, message.results, self))
@@ -655,13 +662,16 @@ class AetherApp(App):
     }
 
     #action-bar {
+        layout: horizontal;
         height: 3;
         background: #111111;
         align: center middle;
     }
 
     #go-btn {
-        width: 100%;
+        width: 20%;
+        width: 20%;
+
         min-height: 1;
         background: #004400;
         color: #ffffff;
@@ -716,6 +726,13 @@ class AetherApp(App):
         color: #ffff00;
     }
 
+    #progress-bar {
+        width: 80%;
+        height: 100%;
+        background: #111111;
+        color: #00ff00;
+        border: none;
+    }
     #spacer-a, #spacer-b {
         height: 1;
     }
