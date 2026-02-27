@@ -45,6 +45,7 @@ from textual.binding import Binding
 from textual import work, on
 from textual.screen import Screen
 from textual.message import Message
+from textual.widgets.data_table import CellDoesNotExist
 
 class TrackUpdate(Message):
     """Event vector for track status synchronization."""
@@ -260,7 +261,7 @@ class Archivist(Screen):
                     self.tracks[i]["status"] = "QUEUED"
                     try:
                         table.update_cell(str(i), status_key, "[white]QUEUED[/]")
-                    except: pass
+                    except CellDoesNotExist: pass
                 
                 self.log_kernel("VECTORS SYNCHRONIZED. READY FOR INGESTION.")
             except Exception as e:
