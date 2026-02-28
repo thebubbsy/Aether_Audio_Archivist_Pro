@@ -960,6 +960,8 @@ class Archivist(Screen):
         self._matched_set: set = set()
         self._dispatched: set = set()
         self.ingest_queue = asyncio.Queue()
+        self._resolve_gate = asyncio.Event()  # gates workers during ambiguity
+        self._resolve_gate.set()  # open by default
         self.worker_tasks = []
         self.auto_ingest = auto_ingest
         self.pre_tracks = pre_tracks
@@ -1332,6 +1334,8 @@ class Archivist(Screen):
         while True:
             try:
                 index = await self.ingest_queue.get()
+                # Pause if ambiguity screen is active (reduces lag)
+                await self._resolve_gate.wait()
                 await self._process_track(index)
                 self.ingest_queue.task_done()
                 
@@ -1460,10 +1464,14 @@ class Archivist(Screen):
             # Multiple close matches with low confidence — let user decide
             self.tracks[index]["status"] = "AWAITING USER DECISION"
             self.post_message(TrackUpdate(index, "AWAITING USER DECISION", "bright_yellow"))
+            # Pause all other workers while user decides
+            self._resolve_gate.clear()
             self.post_message(ResolveFailed(index, track, results[:3]))
             while self.tracks[index].get("youtube_url") is None and \
                   self.tracks[index]["status"] == "AWAITING USER DECISION":
-                await asyncio.sleep(0.2)
+                await asyncio.sleep(0.3)
+            # Resume workers
+            self._resolve_gate.set()
             if self.tracks[index].get("youtube_url"):
                 return {"url": self.tracks[index]["youtube_url"],
                         "id":  self.tracks[index].get("youtube_id", "manual"),
