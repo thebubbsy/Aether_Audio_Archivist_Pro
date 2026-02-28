@@ -333,9 +333,11 @@ def _write_failure_log(entry: dict) -> None:
     with open(log_path, 'w', encoding='utf-8') as f:
         json.dump(history, f, indent=2)
 
-async def scrape_playlist_data(url: str) -> tuple[str, list[dict]]:
+async def scrape_playlist_data(url: str, include_recommended: bool = False) -> tuple[str, list[dict]]:
     """Standalone Playwright scraper — returns (playlist_name, [{artist, title, duration}, ...])."""
     from playwright.async_api import async_playwright
+    # Scope selector: only main tracklist, or all rows if including recommended
+    ROW_SCOPE = '[data-testid="tracklist-row"]' if include_recommended else '[data-testid="playlist-tracklist"] [data-testid="tracklist-row"]'
     playlist_name = "Unknown Playlist"
     dur_regex = re.compile(r'^\d{1,2}:\d{2}(:\d{2})?$')
     tracks = []
@@ -351,7 +353,7 @@ async def scrape_playlist_data(url: str) -> tuple[str, list[dict]]:
             await page.wait_for_load_state("load")
             try: await page.click('button#onetrust-accept-btn-handler', timeout=3000)
             except: pass
-            await page.wait_for_selector('[data-testid="tracklist-row"]', timeout=30000)
+            await page.wait_for_selector(ROW_SCOPE, timeout=30000)
             # Extract playlist name from page
             try:
                 raw_title = await page.title()
@@ -363,14 +365,15 @@ async def scrape_playlist_data(url: str) -> tuple[str, list[dict]]:
             last_count = -1
             stable_count = 0
             while stable_count < 10:
-                await page.evaluate('() => { const r = document.querySelectorAll(\'[data-testid="tracklist-row"]\'); if (r.length > 0) r[r.length-1].scrollIntoView(); return r.length; }')
+                scroll_scope = 'document' if include_recommended else '(document.querySelector(\'[data-testid="playlist-tracklist"]\') || document)'
+                await page.evaluate('() => { const r = ' + scroll_scope + '.querySelectorAll(\'[data-testid="tracklist-row"]\'); if (r.length > 0) r[r.length-1].scrollIntoView(); return r.length; }')
                 await page.mouse.wheel(0, 5000)
                 for _ in range(2):
                     await page.keyboard.press("PageDown")
                     await asyncio.sleep(0.1)
 
-                extracted = await page.evaluate('''() => {
-                    return Array.from(document.querySelectorAll('[data-testid="tracklist-row"]')).map(row => {
+                scope_js = 'document' if include_recommended else '(document.querySelector(\'[data-testid="playlist-tracklist"]\') || document)'
+                extracted = await page.evaluate('() => { const scope = ' + scope_js + '''; return Array.from(scope.querySelectorAll('[data-testid="tracklist-row"]')).map(row => {
                         const titleElem = row.querySelector('div[dir="auto"]');
                         const artistElems = row.querySelectorAll('a[href*="/artist/"]');
                         const durElem = row.querySelector('div[data-testid="tracklist-row-duration"]');
@@ -1064,7 +1067,8 @@ class Archivist(Screen):
                 stable_count = 0
                 while stable_count < 10:
                     rows_count = await page.evaluate('''() => {
-                        const rows = document.querySelectorAll('[data-testid="tracklist-row"]');
+                        const scope = document.querySelector('[data-testid="playlist-tracklist"]') || document;
+                        const rows = scope.querySelectorAll('[data-testid="tracklist-row"]');
                         if (rows.length > 0) {
                             rows[rows.length - 1].scrollIntoView();
                         }
@@ -1079,7 +1083,8 @@ class Archivist(Screen):
                     
                     # 20x Speedup: Extract all visible track data in one JS execution
                     extracted_tracks = await page.evaluate('''() => {
-                        return Array.from(document.querySelectorAll('[data-testid="tracklist-row"]')).map(row => {
+                        const scope = document.querySelector('[data-testid="playlist-tracklist"]') || document;
+                        return Array.from(scope.querySelectorAll('[data-testid="tracklist-row"]')).map(row => {
                             const titleElem = row.querySelector('div[dir="auto"]');
                             const artistElems = row.querySelectorAll('a[href*="/artist/"]');
                             const durElem = row.querySelector('div[data-testid="tracklist-row-duration"]');
