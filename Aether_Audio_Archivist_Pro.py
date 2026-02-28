@@ -243,8 +243,12 @@ class Launchpad(Screen):
             Select([("MATRIX (GREEN)", "matrix"), ("CYBERPUNK (NEON)", "cyberpunk"), ("MOLTEN (RED)", "molten")], value=self.app.visual_theme, id="theme-select"),
             Label("COLLECTION ALIAS (Library Name):"),
             Input(value=self.app.default_library, id="library-input"),
-            Button("INITIALIZE MISSION", variant="success", id="init-btn"),
-            Label("[dim][H] ACCESS MISSION HISTORY ARCHIVE[/]"),
+            Horizontal(
+                Button("INITIALIZE MISSION", variant="success", id="init-btn"),
+                Button("WATCHDOG MODE", variant="error", id="watchdog-btn"),
+                id="launch-btns"
+            ),
+            Label("[dim][H] HISTORY  |  WATCHDOG: Auto-detect clipboard URLs[/]"),
             id="launchpad-box"
         )
         yield Footer()
@@ -289,7 +293,6 @@ class Launchpad(Screen):
         if not url:
             self.app.notify("CRITICAL: SOURCE URL MISSING", severity="error")
             return
-        # P30: Validate it's a Spotify playlist URL
         if "open.spotify.com/playlist/" not in url:
             self.app.notify("ERROR: Must be a Spotify PLAYLIST URL", severity="error")
             return
@@ -300,6 +303,149 @@ class Launchpad(Screen):
             thread_count = 36
             
         self.app.push_screen(Archivist(url, library, thread_count, engine))
+
+    @on(Button.Pressed, "#watchdog-btn")
+    def start_watchdog(self) -> None:
+        threads = self.query_one("#threads-input").value
+        engine = self.query_one("#engine-select").value
+        library = self.query_one("#library-input").value
+        theme = self.query_one("#theme-select").value
+        self.app.visual_theme = theme
+        try:
+            thread_count = int(threads)
+        except ValueError:
+            thread_count = 36
+        self.app.push_screen(WatchdogScreen(library, thread_count, engine))
+
+class WatchdogScreen(Screen):
+    """Clipboard Watchdog — auto-detects Spotify URLs and ingests them."""
+    
+    BINDINGS = [
+        Binding("escape", "stop_watchdog", "Stop Watchdog"),
+    ]
+
+    def __init__(self, library: str = "Aether_Archive", threads: int = 36, engine: str = "cpu"):
+        super().__init__()
+        self.library = library
+        self.threads = threads
+        self.engine = engine
+        self._seen_urls: set = set()
+        self._queue: list = []
+        self._processed: int = 0
+        self._last_clip: str = ""
+        self._poll_timer = None
+        self._processing: bool = False
+
+    def compose(self) -> ComposeResult:
+        yield Header()
+        yield Container(
+            Static("=" * 56, id="wd-line-1"),
+            Static("       WATCHDOG MODE // CLIPBOARD SURVEILLANCE       ", id="wd-line-2"),
+            Static("=" * 56, id="wd-line-3"),
+            Static("", id="wd-spacer-top"),
+            Label("[bold bright_cyan]STATUS:[/] [bold bright_green]SCANNING CLIPBOARD...[/]", id="wd-status"),
+            Label("QUEUED: 0  |  PROCESSED: 0", id="wd-counts"),
+            Static("", id="wd-spacer-mid"),
+            Log(id="wd-log", highlight=True),
+            Static("", id="wd-spacer-bot"),
+            Label("[dim]Copy a Spotify playlist URL to your clipboard. It will be auto-detected and ingested.[/]"),
+            Label("[dim]Press [bold]ESC[/dim] to stop and return to the Launchpad.[/]"),
+            id="watchdog-box"
+        )
+        yield Footer()
+
+    def on_mount(self) -> None:
+        self._wd_log("WATCHDOG INITIALIZED. SCANNING CLIPBOARD EVERY 1.5s...")
+        self._wd_log(f"TARGET LIBRARY: {self.library}  |  THREADS: {self.threads}  |  ENGINE: {self.engine.upper()}")
+        self._wd_log("Copy any Spotify playlist URL. I will detect it automatically.")
+        self._poll_timer = self.set_interval(1.5, self._poll_clipboard)
+
+    def _wd_log(self, msg: str) -> None:
+        ts = datetime.now().strftime("%H:%M:%S")
+        try:
+            self.query_one("#wd-log", Log).write_line(f"[{ts}] {msg}")
+        except Exception:
+            pass
+
+    def _update_counts(self) -> None:
+        try:
+            self.query_one("#wd-counts").update(
+                f"QUEUED: {len(self._queue)}  |  PROCESSED: {self._processed}"
+            )
+        except Exception:
+            pass
+
+    def _poll_clipboard(self) -> None:
+        """Read clipboard and check for new Spotify URLs."""
+        try:
+            result = subprocess.run(
+                ["powershell", "-Command", "Get-Clipboard"],
+                capture_output=True, text=True, timeout=3
+            )
+            clip = result.stdout.strip()
+        except Exception:
+            return
+
+        if not clip or clip == self._last_clip:
+            return
+        self._last_clip = clip
+
+        # Extract all spotify playlist URLs from clipboard text
+        urls = re.findall(r'https?://open\.spotify\.com/playlist/[A-Za-z0-9]+[^\s]*', clip)
+        new_urls = [u for u in urls if u not in self._seen_urls]
+
+        if not new_urls:
+            return
+
+        for url in new_urls:
+            self._seen_urls.add(url)
+            self._queue.append(url)
+            self._wd_log(f"DETECTED: {url}")
+            self.app.notify(f"Playlist detected!", severity="information")
+
+        self._update_counts()
+        self._process_next()
+
+    def _process_next(self) -> None:
+        """Launch the next queued playlist if not already processing."""
+        if self._processing or not self._queue:
+            return
+        self._processing = True
+        url = self._queue.pop(0)
+        self._update_counts()
+        self._wd_log(f"LAUNCHING ARCHIVIST FOR: {url}")
+        try:
+            self.query_one("#wd-status").update(
+                f"[bold bright_cyan]STATUS:[/] [bold bright_yellow]PROCESSING {url[:50]}...[/]"
+            )
+        except Exception:
+            pass
+        self.app.push_screen(Archivist(url, self.library, self.threads, self.engine, auto_ingest=True))
+
+    def on_screen_resume(self) -> None:
+        """Called when this screen is shown again after a pushed screen is popped."""
+        self._processing = False
+        self._processed += 1
+        self._update_counts()
+        self._wd_log(f"MISSION COMPLETE. TOTAL PROCESSED: {self._processed}")
+        try:
+            self.query_one("#wd-status").update(
+                "[bold bright_cyan]STATUS:[/] [bold bright_green]SCANNING CLIPBOARD...[/]"
+            )
+        except Exception:
+            pass
+        # Check if more in queue
+        if self._queue:
+            self._wd_log(f"NEXT IN QUEUE: {self._queue[0]}")
+            self.call_later(self._process_next)
+        else:
+            self._wd_log("QUEUE EMPTY. WATCHING FOR MORE URLS...")
+
+    def action_stop_watchdog(self) -> None:
+        if self._poll_timer:
+            self._poll_timer.stop()
+        self._wd_log("WATCHDOG TERMINATED.")
+        self.app.pop_screen()
 
 class Archivist(Screen):
     """The Operational Command Center."""
@@ -315,7 +461,7 @@ class Archivist(Screen):
 
     auto_scroll = reactive(True)
 
-    def __init__(self, url="", library="Aether_Archive", threads=36, engine="cpu"):
+    def __init__(self, url="", library="Aether_Archive", threads=36, engine="cpu", auto_ingest=False):
         super().__init__()
         # Robust Sanitization: Strip accidental leading characters (like 'vhttps')
         if "http" in url:
@@ -351,6 +497,7 @@ class Archivist(Screen):
         self._dispatched: set = set()              # P2: TRACK DISPATCH SET
         self.ingest_queue = asyncio.Queue()
         self.worker_tasks = []
+        self.auto_ingest = auto_ingest
         self.exit_handled = False
 
     def compose(self) -> ComposeResult:
@@ -587,6 +734,11 @@ class Archivist(Screen):
                 self.harvest_dur_fixed = True
                 self.log_kernel(f"COMPLETE HARVEST: {len(self.tracks)} TRACK DESCRIPTORS IN {self.harvest_dur:.1f}s.")
                 self.log_kernel("VECTORS SYNCHRONIZED. READY FOR INGESTION.")
+                if self.auto_ingest:
+                    self.log_kernel("WATCHDOG: AUTO-SELECTING ALL VECTORS.")
+                    self.action_select_all()
+                    self.log_kernel("WATCHDOG: AUTO-INGESTION ENGAGED.")
+                    self.call_later(self.action_start_ingest)
             except Exception as e:
                 self.log_kernel(f"CRITICAL SCRAPE FAILURE: {e}")
                 import traceback
@@ -1490,6 +1642,49 @@ class AetherApp(App):
 
     #history-line-1, #history-line-2, #history-line-3 {
         color: $accent;
+    }
+
+    #launch-btns {
+        height: auto;
+        width: 100%;
+    }
+
+    #launch-btns Button {
+        width: 1fr;
+    }
+
+    #watchdog-btn {
+        margin-left: 1;
+    }
+
+    #watchdog-box {
+        height: 100%;
+        padding: 1 3;
+        border: solid $accent;
+        background: $bg;
+    }
+
+    #wd-line-1, #wd-line-2, #wd-line-3 {
+        color: $accent;
+    }
+
+    #wd-status {
+        margin-top: 1;
+        color: $accent;
+    }
+
+    #wd-counts {
+        color: $dim;
+        text-style: bold;
+    }
+
+    #wd-log {
+        height: 1fr;
+        border: solid $dim;
+        background: #000000;
+        color: $accent;
+        margin-top: 1;
+        padding-left: 1;
     }
     """
 
