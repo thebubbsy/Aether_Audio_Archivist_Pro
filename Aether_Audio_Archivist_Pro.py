@@ -14,6 +14,7 @@ from io import BytesIO
 from difflib import SequenceMatcher
 from pathlib import Path
 from datetime import datetime
+import traceback
 import yt_dlp
 
 # ARCHITECT: MATTHEW BUBB (SOLE PROGRAMMER)
@@ -1026,15 +1027,17 @@ class Archivist(Screen):
 
         # P15: score all candidates
         scored = sorted(
-            [(s, e) for e in results if (s := _score_result(e, track, spotify_dur)) > 0.25],
+            [(s, e) for e in results if (s := _score_result(e, track, spotify_dur)) > 0.15],
             key=lambda x: x[0], reverse=True
         )
         if scored:
-            self.tracks[index]["status"] = "QUEUED"
-            self.post_message(TrackUpdate(index, "QUEUED", "bright_white"))
-            return scored[0][1]
-
-        if results:
+            # Auto-accept the top result if it scores well enough (>0.4)
+            # Only trigger ambiguity screen if the top score is marginal
+            if scored[0][0] >= 0.4 or len(scored) == 1:
+                self.tracks[index]["status"] = "QUEUED"
+                self.post_message(TrackUpdate(index, "QUEUED", "bright_white"))
+                return scored[0][1]
+            # Multiple close matches with low confidence — let user decide
             self.tracks[index]["status"] = "AWAITING USER DECISION"
             self.post_message(TrackUpdate(index, "AWAITING USER DECISION", "bright_yellow"))
             self.post_message(ResolveFailed(index, track, results[:3]))
@@ -1059,7 +1062,7 @@ class Archivist(Screen):
         track_id = best.get('id', 'tmp')
         out_stem = self.target_dir / f"tmp_{track_id}"
         out_path = out_stem.with_suffix('.mp3')
-        url = best['url']
+        url = best.get('url') or best.get('webpage_url') or f"https://youtube.com/watch?v={track_id}"
 
         for attempt in range(3):
             if attempt:
