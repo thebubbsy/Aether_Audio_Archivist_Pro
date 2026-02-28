@@ -12,6 +12,7 @@ prs*.json
 mission_history.json
 *.pdf
 session_state.json
+failure_log.json
 *.spec
 ffmpeg_bundle/
 ffmpeg_extract/

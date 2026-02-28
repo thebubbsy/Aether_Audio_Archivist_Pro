@@ -317,11 +317,28 @@ class Launchpad(Screen):
             thread_count = 36
         self.app.push_screen(WatchdogScreen(library, thread_count, engine))
 
+def _write_failure_log(entry: dict) -> None:
+    """Append a structured failure entry to failure_log.json for debugging."""
+    log_path = Path(os.getcwd()) / "failure_log.json"
+    history = []
+    if log_path.exists():
+        try:
+            with open(log_path, 'r', encoding='utf-8') as f:
+                history = json.load(f)
+                if not isinstance(history, list): history = []
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            history = []
+    history.append(entry)
+    with open(log_path, 'w', encoding='utf-8') as f:
+        json.dump(history, f, indent=2)
+
 class WatchdogScreen(Screen):
-    """Clipboard Watchdog — auto-detects Spotify URLs and ingests them."""
+    """Clipboard Watchdog — collect Spotify URLs, then process on demand."""
     
     BINDINGS = [
         Binding("escape", "stop_watchdog", "Stop Watchdog"),
+        Binding("enter", "process_all", "Process All"),
+        Binding("d", "remove_selected", "Remove Selected"),
     ]
 
     def __init__(self, library: str = "Aether_Archive", threads: int = 36, engine: str = "cpu"):
@@ -330,34 +347,43 @@ class WatchdogScreen(Screen):
         self.threads = threads
         self.engine = engine
         self._seen_urls: set = set()
-        self._queue: list = []
+        self._url_list: list = []          # [{url, status}]
         self._processed: int = 0
+        self._failed_count: int = 0
         self._last_clip: str = ""
         self._poll_timer = None
-        self._processing: bool = False
+        self._is_running: bool = False     # True when processing queue
+        self._current_idx: int = -1        # Index currently being processed
 
     def compose(self) -> ComposeResult:
         yield Header()
         yield Container(
             Static("=" * 56, id="wd-line-1"),
-            Static("       WATCHDOG MODE // CLIPBOARD SURVEILLANCE       ", id="wd-line-2"),
+            Static("    WATCHDOG MODE // CLIPBOARD URL COLLECTOR    ", id="wd-line-2"),
             Static("=" * 56, id="wd-line-3"),
-            Static("", id="wd-spacer-top"),
-            Label("[bold bright_cyan]STATUS:[/] [bold bright_green]SCANNING CLIPBOARD...[/]", id="wd-status"),
-            Label("QUEUED: 0  |  PROCESSED: 0", id="wd-counts"),
-            Static("", id="wd-spacer-mid"),
+            Label("[bold]STATUS:[/] [bold ansi_bright_green]SCANNING CLIPBOARD[/]  |  Copy Spotify playlist URLs", id="wd-status"),
+            Label("COLLECTED: 0  |  PROCESSED: 0  |  FAILED: 0", id="wd-counts"),
+            DataTable(id="wd-table"),
             Log(id="wd-log", highlight=True),
-            Static("", id="wd-spacer-bot"),
-            Label("[dim]Copy a Spotify playlist URL to your clipboard. It will be auto-detected and ingested.[/]"),
-            Label("[dim]Press [bold]ESC[/dim] to stop and return to the Launchpad.[/]"),
+            Horizontal(
+                Button("PROCESS ALL", variant="success", id="wd-go-btn"),
+                Button("CLEAR LIST", variant="warning", id="wd-clear-btn"),
+                Button("BACK", variant="error", id="wd-back-btn"),
+                id="wd-btn-row"
+            ),
             id="watchdog-box"
         )
         yield Footer()
 
     def on_mount(self) -> None:
-        self._wd_log("WATCHDOG INITIALIZED. SCANNING CLIPBOARD EVERY 1.5s...")
-        self._wd_log(f"TARGET LIBRARY: {self.library}  |  THREADS: {self.threads}  |  ENGINE: {self.engine.upper()}")
-        self._wd_log("Copy any Spotify playlist URL. I will detect it automatically.")
+        table = self.query_one("#wd-table", DataTable)
+        table.add_column("#", width=4, key="idx")
+        table.add_column("PLAYLIST URL", key="url")
+        table.add_column("STATUS", width=14, key="status")
+        table.cursor_type = "row"
+        self._wd_log("WATCHDOG ONLINE. Clipboard scanning every 1.5s.")
+        self._wd_log(f"Library: {self.library}  |  Threads: {self.threads}  |  Engine: {self.engine.upper()}")
+        self._wd_log("Copy Spotify playlist URLs. Press ENTER or PROCESS ALL when ready.")
         self._poll_timer = self.set_interval(1.5, self._poll_clipboard)
 
     def _wd_log(self, msg: str) -> None:
@@ -368,9 +394,10 @@ class WatchdogScreen(Screen):
             pass
 
     def _update_counts(self) -> None:
+        queued = sum(1 for u in self._url_list if u["status"] == "QUEUED")
         try:
             self.query_one("#wd-counts").update(
-                f"QUEUED: {len(self._queue)}  |  PROCESSED: {self._processed}"
+                f"COLLECTED: {len(self._url_list)}  |  PROCESSED: {self._processed}  |  FAILED: {self._failed_count}"
             )
         except Exception:
             pass
@@ -390,57 +417,120 @@ class WatchdogScreen(Screen):
             return
         self._last_clip = clip
 
-        # Extract all spotify playlist URLs from clipboard text
         urls = re.findall(r'https?://open\.spotify\.com/playlist/[A-Za-z0-9]+[^\s]*', clip)
         new_urls = [u for u in urls if u not in self._seen_urls]
 
         if not new_urls:
             return
 
+        table = self.query_one("#wd-table", DataTable)
         for url in new_urls:
             self._seen_urls.add(url)
-            self._queue.append(url)
-            self._wd_log(f"DETECTED: {url}")
-            self.app.notify(f"Playlist detected!", severity="information")
+            idx = len(self._url_list)
+            self._url_list.append({"url": url, "status": "QUEUED"})
+            table.add_row(str(idx + 1), url[:60], "QUEUED", key=str(idx))
+            self._wd_log(f"DETECTED: {url[:70]}")
+            self.app.notify("Playlist URL collected", severity="information")
 
         self._update_counts()
-        self._process_next()
 
-    def _process_next(self) -> None:
-        """Launch the next queued playlist if not already processing."""
-        if self._processing or not self._queue:
+    @on(Button.Pressed, "#wd-go-btn")
+    def action_process_all(self) -> None:
+        """Start processing all QUEUED URLs sequentially."""
+        queued = [i for i, u in enumerate(self._url_list) if u["status"] == "QUEUED"]
+        if not queued:
+            self.app.notify("No URLs queued to process", severity="warning")
             return
-        self._processing = True
-        url = self._queue.pop(0)
-        self._update_counts()
-        self._wd_log(f"LAUNCHING ARCHIVIST FOR: {url}")
+        if self._is_running:
+            self.app.notify("Already processing", severity="warning")
+            return
+        self._is_running = True
+        self._wd_log(f"COMMENCING SEQUENTIAL PROCESSING OF {len(queued)} PLAYLISTS.")
         try:
             self.query_one("#wd-status").update(
-                f"[bold bright_cyan]STATUS:[/] [bold bright_yellow]PROCESSING {url[:50]}...[/]"
+                "[bold]STATUS:[/] [bold ansi_bright_yellow]PROCESSING...[/]"
             )
         except Exception:
             pass
-        self.app.push_screen(Archivist(url, self.library, self.threads, self.engine, auto_ingest=True))
+        self._process_next_queued()
+
+    def _process_next_queued(self) -> None:
+        """Find the next QUEUED URL and launch Archivist for it."""
+        for i, entry in enumerate(self._url_list):
+            if entry["status"] == "QUEUED":
+                self._current_idx = i
+                entry["status"] = "PROCESSING"
+                table = self.query_one("#wd-table", DataTable)
+                try:
+                    table.update_cell(str(i), "status", "PROCESSING")
+                except Exception:
+                    pass
+                self._wd_log(f"LAUNCHING: [{i+1}] {entry['url'][:60]}")
+                self.app.push_screen(
+                    Archivist(entry["url"], self.library, self.threads, self.engine, auto_ingest=True)
+                )
+                return
+        # No more queued — done
+        self._is_running = False
+        self._wd_log(f"ALL PLAYLISTS PROCESSED. Total: {self._processed}, Failed: {self._failed_count}")
+        try:
+            self.query_one("#wd-status").update(
+                "[bold]STATUS:[/] [bold ansi_bright_green]COMPLETE[/]  |  Watching for more URLs..."
+            )
+        except Exception:
+            pass
 
     def on_screen_resume(self) -> None:
-        """Called when this screen is shown again after a pushed screen is popped."""
-        self._processing = False
-        self._processed += 1
+        """Called when Archivist pops back to this screen."""
+        if self._current_idx >= 0 and self._current_idx < len(self._url_list):
+            entry = self._url_list[self._current_idx]
+            entry["status"] = "DONE"
+            self._processed += 1
+            table = self.query_one("#wd-table", DataTable)
+            try:
+                table.update_cell(str(self._current_idx), "status", "DONE")
+            except Exception:
+                pass
+            self._wd_log(f"COMPLETE: [{self._current_idx+1}] {entry['url'][:60]}")
+
         self._update_counts()
-        self._wd_log(f"MISSION COMPLETE. TOTAL PROCESSED: {self._processed}")
+        self._current_idx = -1
+
+        if self._is_running:
+            self.call_later(self._process_next_queued)
+
+    @on(Button.Pressed, "#wd-clear-btn")
+    def clear_list(self) -> None:
+        if self._is_running:
+            self.app.notify("Cannot clear while processing", severity="warning")
+            return
+        self._url_list.clear()
+        self._seen_urls.clear()
+        self._processed = 0
+        self._failed_count = 0
+        table = self.query_one("#wd-table", DataTable)
+        table.clear()
+        self._update_counts()
+        self._wd_log("LIST CLEARED.")
+
+    def action_remove_selected(self) -> None:
+        if self._is_running:
+            return
+        table = self.query_one("#wd-table", DataTable)
         try:
-            self.query_one("#wd-status").update(
-                "[bold bright_cyan]STATUS:[/] [bold bright_green]SCANNING CLIPBOARD...[/]"
-            )
+            row_key, _ = table.coordinate_to_cell_key(table.cursor_coordinate)
+            idx = int(str(row_key))
+            if idx < len(self._url_list) and self._url_list[idx]["status"] == "QUEUED":
+                url = self._url_list[idx]["url"]
+                self._url_list[idx]["status"] = "REMOVED"
+                self._seen_urls.discard(url)
+                table.remove_row(str(idx))
+                self._wd_log(f"REMOVED: {url[:60]}")
+                self._update_counts()
         except Exception:
             pass
-        # Check if more in queue
-        if self._queue:
-            self._wd_log(f"NEXT IN QUEUE: {self._queue[0]}")
-            self.call_later(self._process_next)
-        else:
-            self._wd_log("QUEUE EMPTY. WATCHING FOR MORE URLS...")
 
+    @on(Button.Pressed, "#wd-back-btn")
     def action_stop_watchdog(self) -> None:
         if self._poll_timer:
             self._poll_timer.stop()
@@ -857,6 +947,15 @@ class Archivist(Screen):
                 self.post_message(TrackUpdate(index, "FAILED", "bright_red"))
                 self.query_one(ProgressBar).advance(1)
                 self.log_kernel(f"SIGNAL LOSS: {track['title']}")
+                _write_failure_log({
+                    "timestamp": datetime.now().isoformat(),
+                    "phase": "download",
+                    "track_index": index,
+                    "artist": track.get("artist", "?"),
+                    "title": track.get("title", "?"),
+                    "youtube_url": best.get("url", "?"),
+                    "error": "Download returned no file (SIGNAL LOSS)",
+                })
                 return
             elapsed = (datetime.now() - track_start).total_seconds()
             await self.tag_track(index, track, temp_path, best, elapsed)
@@ -866,6 +965,15 @@ class Archivist(Screen):
             self.post_message(TrackUpdate(index, "FAILED", "bright_red"))
             self.query_one(ProgressBar).advance(1)
             self.log_kernel(f"FAIL [{index}]: {track.get('title','?')} — {e}")
+            _write_failure_log({
+                "timestamp": datetime.now().isoformat(),
+                "phase": "process_track",
+                "track_index": index,
+                "artist": track.get("artist", "?"),
+                "title": track.get("title", "?"),
+                "error": str(e),
+                "traceback": traceback.format_exc(),
+            })
         finally:
             self.pending_tasks -= 1
 
@@ -1685,6 +1793,23 @@ class AetherApp(App):
         color: $accent;
         margin-top: 1;
         padding-left: 1;
+    }
+
+    #wd-table {
+        height: 40%;
+        border: solid $dim;
+        margin-top: 1;
+    }
+
+    #wd-btn-row {
+        height: auto;
+        width: 100%;
+        margin-top: 1;
+    }
+
+    #wd-btn-row Button {
+        width: 1fr;
+        margin-right: 1;
     }
     """
 
