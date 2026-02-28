@@ -333,12 +333,80 @@ def _write_failure_log(entry: dict) -> None:
     with open(log_path, 'w', encoding='utf-8') as f:
         json.dump(history, f, indent=2)
 
+async def scrape_playlist_data(url: str) -> list[dict]:
+    """Standalone Playwright scraper — returns [{artist, title, duration}, ...] with no UI coupling."""
+    from playwright.async_api import async_playwright
+    dur_regex = re.compile(r'^\d{1,2}:\d{2}(:\d{2})?$')
+    tracks = []
+    processed_ids = set()
+
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        page = await browser.new_page(
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        )
+        try:
+            await page.goto(url, timeout=60000)
+            await page.wait_for_load_state("load")
+            try: await page.click('button#onetrust-accept-btn-handler', timeout=3000)
+            except: pass
+            await page.wait_for_selector('[data-testid="tracklist-row"]', timeout=30000)
+
+            last_count = -1
+            stable_count = 0
+            while stable_count < 10:
+                await page.evaluate('() => { const r = document.querySelectorAll(\'[data-testid="tracklist-row"]\'); if (r.length > 0) r[r.length-1].scrollIntoView(); return r.length; }')
+                await page.mouse.wheel(0, 5000)
+                for _ in range(2):
+                    await page.keyboard.press("PageDown")
+                    await asyncio.sleep(0.1)
+
+                extracted = await page.evaluate('''() => {
+                    return Array.from(document.querySelectorAll('[data-testid="tracklist-row"]')).map(row => {
+                        const titleElem = row.querySelector('div[dir="auto"]');
+                        const artistElems = row.querySelectorAll('a[href*="/artist/"]');
+                        const durElem = row.querySelector('div[data-testid="tracklist-row-duration"]');
+                        let duration = durElem ? durElem.innerText : "0:00";
+                        if (duration === "0:00") {
+                            const potentialDurs = Array.from(row.querySelectorAll('div')).filter(d => d.innerText.includes(':'));
+                            const durRegex = /^\\d{1,2}:\\d{2}(:\\d{2})?$/;
+                            for (const pd of potentialDurs) {
+                                if (durRegex.test(pd.innerText.trim())) { duration = pd.innerText.trim(); break; }
+                            }
+                        }
+                        return {
+                            title: titleElem ? titleElem.innerText : "Unknown",
+                            artists: Array.from(artistElems).map(a => a.innerText).join(", "),
+                            duration: duration
+                        };
+                    });
+                }''')
+
+                for td in extracted:
+                    tid = f"{td['artists']}_{td['title']}".strip()
+                    if tid and tid not in processed_ids:
+                        processed_ids.add(tid)
+                        tracks.append({"artist": td["artists"], "title": td["title"], "duration": td["duration"]})
+
+                current = len(tracks)
+                if current == last_count:
+                    stable_count += 1
+                else:
+                    stable_count = 0
+                    last_count = current
+        except Exception:
+            pass
+        finally:
+            await browser.close()
+    return tracks
+
 class WatchdogScreen(Screen):
-    """Clipboard Watchdog — collect Spotify URLs, then process on demand."""
+    """Clipboard Watchdog — collect Spotify URLs, preview tracks, then process on demand."""
     
     BINDINGS = [
         Binding("escape", "stop_watchdog", "Stop Watchdog"),
-        Binding("enter", "process_all", "Process All"),
+        Binding("enter", "preview_selected", "Preview Playlist"),
+        Binding("s", "start_selected", "Start Selected"),
         Binding("d", "remove_selected", "Remove Selected"),
     ]
 
@@ -348,13 +416,14 @@ class WatchdogScreen(Screen):
         self.threads = threads
         self.engine = engine
         self._seen_urls: set = set()
-        self._url_list: list = []          # [{url, status}]
+        self._url_list: list = []          # [{url, status, tracks, track_count}]
         self._processed: int = 0
         self._failed_count: int = 0
         self._last_clip: str = ""
         self._poll_timer = None
-        self._is_running: bool = False     # True when processing queue
-        self._current_idx: int = -1        # Index currently being processed
+        self._is_running: bool = False
+        self._current_idx: int = -1
+        self._scraping_count: int = 0
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -362,8 +431,8 @@ class WatchdogScreen(Screen):
             Static("=" * 56, id="wd-line-1"),
             Static("    WATCHDOG MODE // CLIPBOARD URL COLLECTOR    ", id="wd-line-2"),
             Static("=" * 56, id="wd-line-3"),
-            Label("[bold]STATUS:[/] [bold ansi_bright_green]SCANNING CLIPBOARD[/]  |  Copy Spotify playlist URLs", id="wd-status"),
-            Label("COLLECTED: 0  |  PROCESSED: 0  |  FAILED: 0", id="wd-counts"),
+            Label("[bold]STATUS:[/] [bold ansi_bright_green]SCANNING CLIPBOARD[/]", id="wd-status"),
+            Label("PLAYLISTS: 0  |  TOTAL TRACKS: 0  |  PROCESSED: 0", id="wd-counts"),
             DataTable(id="wd-table"),
             Log(id="wd-log", highlight=True),
             Horizontal(
@@ -372,6 +441,7 @@ class WatchdogScreen(Screen):
                 Button("BACK", variant="error", id="wd-back-btn"),
                 id="wd-btn-row"
             ),
+            Label("[dim]ENTER=Preview  |  S=Start  |  D=Remove  |  ESC=Back[/]", id="wd-hint"),
             id="watchdog-box"
         )
         yield Footer()
@@ -380,11 +450,12 @@ class WatchdogScreen(Screen):
         table = self.query_one("#wd-table", DataTable)
         table.add_column("#", width=4, key="idx")
         table.add_column("PLAYLIST URL", key="url")
+        table.add_column("TRACKS", width=8, key="tracks")
         table.add_column("STATUS", width=14, key="status")
         table.cursor_type = "row"
         self._wd_log("WATCHDOG ONLINE. Clipboard scanning every 1.5s.")
         self._wd_log(f"Library: {self.library}  |  Threads: {self.threads}  |  Engine: {self.engine.upper()}")
-        self._wd_log("Copy Spotify playlist URLs. Press ENTER or PROCESS ALL when ready.")
+        self._wd_log("Copy Spotify playlist URLs. Press S to start one, ENTER to preview.")
         self._poll_timer = self.set_interval(1.5, self._poll_clipboard)
 
     def _wd_log(self, msg: str) -> None:
@@ -395,16 +466,15 @@ class WatchdogScreen(Screen):
             pass
 
     def _update_counts(self) -> None:
-        queued = sum(1 for u in self._url_list if u["status"] == "QUEUED")
+        total_tracks = sum(e.get("track_count", 0) for e in self._url_list)
         try:
             self.query_one("#wd-counts").update(
-                f"COLLECTED: {len(self._url_list)}  |  PROCESSED: {self._processed}  |  FAILED: {self._failed_count}"
+                f"PLAYLISTS: {len(self._url_list)}  |  TOTAL TRACKS: {total_tracks}  |  PROCESSED: {self._processed}"
             )
         except Exception:
             pass
 
     def _poll_clipboard(self) -> None:
-        """Read clipboard and check for new Spotify URLs."""
         try:
             result = subprocess.run(
                 ["powershell", "-Command", "Get-Clipboard"],
@@ -428,19 +498,112 @@ class WatchdogScreen(Screen):
         for url in new_urls:
             self._seen_urls.add(url)
             idx = len(self._url_list)
-            self._url_list.append({"url": url, "status": "QUEUED"})
-            table.add_row(str(idx + 1), url[:60], "QUEUED", key=str(idx))
+            self._url_list.append({"url": url, "status": "SCANNING", "tracks": [], "track_count": 0})
+            table.add_row(str(idx + 1), url[:55], "...", "SCANNING", key=str(idx))
             self._wd_log(f"DETECTED: {url[:70]}")
             self.app.notify("Playlist URL collected", severity="information")
+            self._scan_playlist(idx)
 
         self._update_counts()
 
+    @work(thread=False)
+    async def _scan_playlist(self, idx: int) -> None:
+        """Background scrape to get track list and count."""
+        entry = self._url_list[idx]
+        self._scraping_count += 1
+        try:
+            self.query_one("#wd-status").update(
+                f"[bold]STATUS:[/] [bold ansi_bright_yellow]SCANNING {self._scraping_count} playlist(s)...[/]"
+            )
+        except Exception:
+            pass
+        try:
+            tracks = await scrape_playlist_data(entry["url"])
+            entry["tracks"] = tracks
+            entry["track_count"] = len(tracks)
+            entry["status"] = "QUEUED"
+            table = self.query_one("#wd-table", DataTable)
+            try:
+                table.update_cell(str(idx), "tracks", str(len(tracks)))
+                table.update_cell(str(idx), "status", "QUEUED")
+            except Exception:
+                pass
+            self._wd_log(f"SCANNED [{idx+1}]: {len(tracks)} tracks found")
+        except Exception as e:
+            entry["status"] = "SCAN FAIL"
+            self._wd_log(f"SCAN FAILED [{idx+1}]: {e}")
+            try:
+                table = self.query_one("#wd-table", DataTable)
+                table.update_cell(str(idx), "status", "SCAN FAIL")
+            except Exception:
+                pass
+        finally:
+            self._scraping_count -= 1
+            self._update_counts()
+            if self._scraping_count <= 0:
+                try:
+                    self.query_one("#wd-status").update(
+                        "[bold]STATUS:[/] [bold ansi_bright_green]READY[/]  |  Copy more or press S / PROCESS ALL"
+                    )
+                except Exception:
+                    pass
+
+    def _get_highlighted_idx(self) -> int:
+        """Get the index of the currently highlighted row."""
+        table = self.query_one("#wd-table", DataTable)
+        try:
+            row_key, _ = table.coordinate_to_cell_key(table.cursor_coordinate)
+            return int(str(row_key))
+        except Exception:
+            return -1
+
+    def action_preview_selected(self) -> None:
+        """Open PlaylistPreviewScreen for the highlighted playlist."""
+        idx = self._get_highlighted_idx()
+        if idx < 0 or idx >= len(self._url_list):
+            return
+        entry = self._url_list[idx]
+        if not entry.get("tracks"):
+            self.app.notify("Still scanning or no tracks found", severity="warning")
+            return
+        self.app.push_screen(PlaylistPreviewScreen(
+            idx, entry, self.library, self.threads, self.engine
+        ))
+
+    def action_start_selected(self) -> None:
+        """Start processing the highlighted playlist immediately."""
+        idx = self._get_highlighted_idx()
+        if idx < 0 or idx >= len(self._url_list):
+            return
+        entry = self._url_list[idx]
+        if entry["status"] not in ("QUEUED", "SCAN FAIL"):
+            self.app.notify(f"Cannot start: status is {entry['status']}", severity="warning")
+            return
+        self._launch_playlist(idx)
+
+    def _launch_playlist(self, idx: int) -> None:
+        """Launch Archivist for a specific playlist."""
+        entry = self._url_list[idx]
+        entry["status"] = "PROCESSING"
+        self._current_idx = idx
+        table = self.query_one("#wd-table", DataTable)
+        try:
+            table.update_cell(str(idx), "status", "PROCESSING")
+        except Exception:
+            pass
+        self._wd_log(f"LAUNCHING: [{idx+1}] {entry['url'][:60]}")
+        # Pass pre-scraped tracks if available
+        pre_tracks = entry.get("tracks") if entry.get("tracks") else None
+        self.app.push_screen(
+            Archivist(entry["url"], self.library, self.threads, self.engine,
+                      auto_ingest=True, pre_tracks=pre_tracks)
+        )
+
     @on(Button.Pressed, "#wd-go-btn")
     def action_process_all(self) -> None:
-        """Start processing all QUEUED URLs sequentially."""
         queued = [i for i, u in enumerate(self._url_list) if u["status"] == "QUEUED"]
         if not queued:
-            self.app.notify("No URLs queued to process", severity="warning")
+            self.app.notify("No playlists queued to process", severity="warning")
             return
         if self._is_running:
             self.app.notify("Already processing", severity="warning")
@@ -449,40 +612,27 @@ class WatchdogScreen(Screen):
         self._wd_log(f"COMMENCING SEQUENTIAL PROCESSING OF {len(queued)} PLAYLISTS.")
         try:
             self.query_one("#wd-status").update(
-                "[bold]STATUS:[/] [bold ansi_bright_yellow]PROCESSING...[/]"
+                "[bold]STATUS:[/] [bold ansi_bright_yellow]PROCESSING QUEUE...[/]"
             )
         except Exception:
             pass
         self._process_next_queued()
 
     def _process_next_queued(self) -> None:
-        """Find the next QUEUED URL and launch Archivist for it."""
         for i, entry in enumerate(self._url_list):
             if entry["status"] == "QUEUED":
-                self._current_idx = i
-                entry["status"] = "PROCESSING"
-                table = self.query_one("#wd-table", DataTable)
-                try:
-                    table.update_cell(str(i), "status", "PROCESSING")
-                except Exception:
-                    pass
-                self._wd_log(f"LAUNCHING: [{i+1}] {entry['url'][:60]}")
-                self.app.push_screen(
-                    Archivist(entry["url"], self.library, self.threads, self.engine, auto_ingest=True)
-                )
+                self._launch_playlist(i)
                 return
-        # No more queued — done
         self._is_running = False
-        self._wd_log(f"ALL PLAYLISTS PROCESSED. Total: {self._processed}, Failed: {self._failed_count}")
+        self._wd_log(f"ALL PLAYLISTS PROCESSED. Total: {self._processed}")
         try:
             self.query_one("#wd-status").update(
-                "[bold]STATUS:[/] [bold ansi_bright_green]COMPLETE[/]  |  Watching for more URLs..."
+                "[bold]STATUS:[/] [bold ansi_bright_green]COMPLETE[/]  |  Copy more URLs to continue"
             )
         except Exception:
             pass
 
     def on_screen_resume(self) -> None:
-        """Called when Archivist pops back to this screen."""
         if self._current_idx >= 0 and self._current_idx < len(self._url_list):
             entry = self._url_list[self._current_idx]
             entry["status"] = "DONE"
@@ -517,25 +667,145 @@ class WatchdogScreen(Screen):
     def action_remove_selected(self) -> None:
         if self._is_running:
             return
-        table = self.query_one("#wd-table", DataTable)
-        try:
-            row_key, _ = table.coordinate_to_cell_key(table.cursor_coordinate)
-            idx = int(str(row_key))
-            if idx < len(self._url_list) and self._url_list[idx]["status"] == "QUEUED":
-                url = self._url_list[idx]["url"]
-                self._url_list[idx]["status"] = "REMOVED"
-                self._seen_urls.discard(url)
-                table.remove_row(str(idx))
-                self._wd_log(f"REMOVED: {url[:60]}")
-                self._update_counts()
-        except Exception:
-            pass
+        idx = self._get_highlighted_idx()
+        if idx < 0 or idx >= len(self._url_list):
+            return
+        if self._url_list[idx]["status"] in ("QUEUED", "SCANNING", "SCAN FAIL"):
+            url = self._url_list[idx]["url"]
+            self._url_list[idx]["status"] = "REMOVED"
+            self._seen_urls.discard(url)
+            table = self.query_one("#wd-table", DataTable)
+            table.remove_row(str(idx))
+            self._wd_log(f"REMOVED: {url[:60]}")
+            self._update_counts()
 
     @on(Button.Pressed, "#wd-back-btn")
     def action_stop_watchdog(self) -> None:
         if self._poll_timer:
             self._poll_timer.stop()
         self._wd_log("WATCHDOG TERMINATED.")
+        self.app.pop_screen()
+
+
+class PlaylistPreviewScreen(Screen):
+    """Preview and select tracks within a playlist before starting download."""
+
+    BINDINGS = [
+        Binding("space", "toggle_track", "Toggle Track"),
+        Binding("a", "select_all_tracks", "Select All"),
+        Binding("n", "deselect_all_tracks", "Deselect All"),
+        Binding("enter", "start_playlist", "Start Download"),
+        Binding("escape", "go_back", "Back to Watchdog"),
+    ]
+
+    def __init__(self, wd_idx: int, entry: dict, library: str, threads: int, engine: str):
+        super().__init__()
+        self.wd_idx = wd_idx
+        self.entry = entry
+        self.library = library
+        self.threads = threads
+        self.engine = engine
+        self.track_selection: list[bool] = [True] * len(entry.get("tracks", []))
+
+    def compose(self) -> ComposeResult:
+        yield Header()
+        yield Container(
+            Static("=" * 56, id="pp-line-1"),
+            Static("     PLAYLIST PREVIEW // TRACK SELECTION     ", id="pp-line-2"),
+            Static("=" * 56, id="pp-line-3"),
+            Label(f"[bold]{self.entry['url'][:70]}[/]", id="pp-url"),
+            Label(f"TRACKS: {len(self.entry.get('tracks', []))}  |  SELECTED: {sum(self.track_selection)}", id="pp-counts"),
+            DataTable(id="pp-table"),
+            Horizontal(
+                Button("START DOWNLOAD", variant="success", id="pp-start-btn"),
+                Button("SELECT ALL", variant="primary", id="pp-selall-btn"),
+                Button("DESELECT ALL", variant="warning", id="pp-deselall-btn"),
+                Button("BACK", variant="error", id="pp-back-btn"),
+                id="pp-btn-row"
+            ),
+            Label("[dim]SPACE=Toggle  |  A=Select All  |  N=Deselect All  |  ENTER=Start  |  ESC=Back[/]", id="pp-hint"),
+            id="preview-box"
+        )
+        yield Footer()
+
+    def on_mount(self) -> None:
+        table = self.query_one("#pp-table", DataTable)
+        table.add_column("SEL", width=5, key="sel")
+        table.add_column("#", width=4, key="idx")
+        table.add_column("ARTIST", key="artist")
+        table.add_column("TITLE", key="title")
+        table.add_column("DUR", width=6, key="dur")
+        table.cursor_type = "row"
+
+        for i, track in enumerate(self.entry.get("tracks", [])):
+            table.add_row(
+                "[X]", str(i + 1),
+                track.get("artist", "?")[:25],
+                track.get("title", "?")[:35],
+                track.get("duration", "?"),
+                key=str(i)
+            )
+
+    def _update_selection_count(self) -> None:
+        try:
+            self.query_one("#pp-counts").update(
+                f"TRACKS: {len(self.track_selection)}  |  SELECTED: {sum(self.track_selection)}"
+            )
+        except Exception:
+            pass
+
+    def action_toggle_track(self) -> None:
+        table = self.query_one("#pp-table", DataTable)
+        try:
+            row_key, _ = table.coordinate_to_cell_key(table.cursor_coordinate)
+            idx = int(str(row_key))
+            self.track_selection[idx] = not self.track_selection[idx]
+            val = "[X]" if self.track_selection[idx] else "[ ]"
+            table.update_cell(str(idx), "sel", val)
+            self._update_selection_count()
+        except Exception:
+            pass
+
+    @on(Button.Pressed, "#pp-selall-btn")
+    def action_select_all_tracks(self) -> None:
+        table = self.query_one("#pp-table", DataTable)
+        for i in range(len(self.track_selection)):
+            self.track_selection[i] = True
+            try: table.update_cell(str(i), "sel", "[X]")
+            except: pass
+        self._update_selection_count()
+
+    @on(Button.Pressed, "#pp-deselall-btn")
+    def action_deselect_all_tracks(self) -> None:
+        table = self.query_one("#pp-table", DataTable)
+        for i in range(len(self.track_selection)):
+            self.track_selection[i] = False
+            try: table.update_cell(str(i), "sel", "[ ]")
+            except: pass
+        self._update_selection_count()
+
+    @on(Button.Pressed, "#pp-start-btn")
+    def action_start_playlist(self) -> None:
+        selected = [i for i, s in enumerate(self.track_selection) if s]
+        if not selected:
+            self.app.notify("No tracks selected", severity="warning")
+            return
+        # Build pre_tracks with selection state
+        pre_tracks = []
+        for i, track in enumerate(self.entry.get("tracks", [])):
+            t = dict(track)
+            t["selected"] = self.track_selection[i]
+            t["status"] = "WAITING FOR PROPAGATION"
+            pre_tracks.append(t)
+        self.entry["status"] = "PROCESSING"
+        self.app.pop_screen()  # Back to Watchdog
+        self.app.push_screen(
+            Archivist(self.entry["url"], self.library, self.threads, self.engine,
+                      auto_ingest=True, pre_tracks=pre_tracks)
+        )
+
+    @on(Button.Pressed, "#pp-back-btn")
+    def action_go_back(self) -> None:
         self.app.pop_screen()
 
 class Archivist(Screen):
@@ -552,7 +822,7 @@ class Archivist(Screen):
 
     auto_scroll = reactive(True)
 
-    def __init__(self, url="", library="Aether_Archive", threads=36, engine="cpu", auto_ingest=False):
+    def __init__(self, url="", library="Aether_Archive", threads=36, engine="cpu", auto_ingest=False, pre_tracks=None):
         super().__init__()
         # Robust Sanitization: Strip accidental leading characters (like 'vhttps')
         if "http" in url:
@@ -561,7 +831,7 @@ class Archivist(Screen):
         self.url = url.strip()
         self.library = "".join([c for c in library if c.isalnum() or c in " -_"]).strip() or "Aether_Archive"
         self.threads = threads
-        self.engine = engine # Keep engine as it's passed from Launchpad
+        self.engine = engine
         self.target_dir = Path(os.getcwd()) / "Audio_Libraries" / self.library
         self.target_dir.mkdir(parents=True, exist_ok=True)
         self.tracks = []
@@ -572,7 +842,7 @@ class Archivist(Screen):
         self.track_sizes = {}
         self.pending_tasks = 0
         self.col_keys = {}
-        self.semaphore = None # Replaced by Queue
+        self.semaphore = None
         self.is_ingesting = False
         self.gpu_failures = 0
         self.live_timer = None
@@ -582,13 +852,14 @@ class Archivist(Screen):
         self.live_harvest_time = 0
         self.live_ingest_time = 0
         self.total_size_bytes = 0
-        self.track_speeds: dict[int, float] = {}   # P27: live KB/s per track
-        self._running_size: int = 0                # P7:  incremental total
-        self._matched_set: set = set()             # Implement matched_set in scrape_tracks
-        self._dispatched: set = set()              # P2: TRACK DISPATCH SET
+        self.track_speeds: dict[int, float] = {}
+        self._running_size: int = 0
+        self._matched_set: set = set()
+        self._dispatched: set = set()
         self.ingest_queue = asyncio.Queue()
         self.worker_tasks = []
         self.auto_ingest = auto_ingest
+        self.pre_tracks = pre_tracks
         self.exit_handled = False
 
     def compose(self) -> ComposeResult:
@@ -626,8 +897,11 @@ class Archivist(Screen):
                 signal.signal(sig, self.handle_exit)
         except Exception:
             pass
-            
-        self.scrape_tracks()
+
+        if self.pre_tracks:
+            self._load_pre_tracks()
+        else:
+            self.scrape_tracks()
     
     def update_timers(self) -> None:  # P7: runs at 4 Hz
         if self.harvest_start and not hasattr(self, 'harvest_dur_fixed'):
@@ -654,6 +928,47 @@ class Archivist(Screen):
             indicator.update("[ PAUSED ]")
             indicator.styles.color = "ansi_default"
             indicator.styles.text_style = "none"
+
+    def _load_pre_tracks(self) -> None:
+        """Load pre-scraped tracks directly, bypassing Playwright."""
+        self.harvest_start = datetime.now()
+        self.log_kernel(f"LOADING {len(self.pre_tracks)} PRE-SCANNED TRACKS (SKIPPING PLAYWRIGHT)...")
+        table = self.query_one(DataTable)
+        for i, t in enumerate(self.pre_tracks):
+            self.tracks.append({
+                "artist": t.get("artist", ""),
+                "title": t.get("title", ""),
+                "duration": t.get("duration", "0:00"),
+                "selected": t.get("selected", True),
+                "status": "WAITING FOR PROPAGATION"
+            })
+            sel_val = "[X]" if t.get("selected", True) else "[ ]"
+            table.add_row(
+                sel_val,
+                render_status_badge("WAITING FOR PROPAGATION"),
+                t.get("artist", "")[:25],
+                t.get("title", "")[:40],
+                t.get("duration", ""),
+                "",
+                key=str(i)
+            )
+        self.is_scraping = False
+        self.harvest_dur = (datetime.now() - self.harvest_start).total_seconds()
+        self.harvest_dur_fixed = True
+        self.log_kernel(f"COMPLETE HARVEST: {len(self.tracks)} TRACK DESCRIPTORS IN {self.harvest_dur:.1f}s.")
+        self.log_kernel("VECTORS SYNCHRONIZED. DISPATCHING MATCH VECTORS...")
+        # Dispatch matching for all tracks
+        for i in range(len(self.tracks)):
+            if self.tracks[i]["status"] == "WAITING FOR PROPAGATION":
+                self._dispatched.add(i)
+                self.tracks[i]["status"] = "MATCHING"
+                table.update_cell(str(i), self.col_keys["STATUS"], render_status_badge("MATCHING"))
+                self.match_vector(i)
+        if self.auto_ingest:
+            self.log_kernel("WATCHDOG: AUTO-SELECTING ALL VECTORS.")
+            self.action_select_all()
+            self.log_kernel("WATCHDOG: AUTO-INGESTION ENGAGED.")
+            self.call_later(self.action_start_ingest)
 
     def save_checkpoint(self) -> None:
         """Write session persistence vector to disk."""
@@ -1811,6 +2126,49 @@ class AetherApp(App):
     }
 
     #wd-btn-row Button {
+        width: 1fr;
+        margin-right: 1;
+    }
+
+    #wd-hint, #pp-hint {
+        color: $dim;
+        margin-top: 1;
+    }
+
+    #preview-box {
+        height: 100%;
+        padding: 1 3;
+        border: solid $accent;
+        background: $bg;
+    }
+
+    #pp-line-1, #pp-line-2, #pp-line-3 {
+        color: $accent;
+    }
+
+    #pp-url {
+        margin-top: 1;
+        color: $accent;
+    }
+
+    #pp-counts {
+        color: $dim;
+        text-style: bold;
+    }
+
+    #pp-table {
+        height: 1fr;
+        border: solid $dim;
+        margin-top: 1;
+    }
+
+    #pp-btn-row {
+        height: auto;
+        width: 100%;
+        margin-top: 1;
+    }
+
+    #pp-btn-row Button {
         width: 1fr;
         margin-right: 1;
     }
