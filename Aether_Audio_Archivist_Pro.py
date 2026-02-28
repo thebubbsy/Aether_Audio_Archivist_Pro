@@ -143,9 +143,11 @@ class Archivist(Screen):
         self.col_keys = {}
         self.semaphore = asyncio.Semaphore(threads)
         self.is_ingesting = False
-        self.harvest_dur = 0
-        self.ingest_start = None
         self.gpu_failures = 0
+        self.live_timer = None
+        self.live_harvest_time = 0
+        self.live_ingest_time = 0
+        self.total_size_bytes = 0
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -155,6 +157,9 @@ class Archivist(Screen):
                 yield ProgressBar(id="ingest-progress", total=100, show_eta=True)
             yield Log(id="hacker-log", highlight=True)
         with Horizontal(id="action-bar"):
+             yield Label("HARVEST: 0.0s", id="harvest-timer")
+             yield Label("INGEST: 0.0s", id="ingest-timer")
+             yield Label("SIZE: 0.00 MB", id="total-size-label")
              yield Button("GO (COMMENCE INGESTION)", id="go-btn", variant="success")
         yield Footer()
 
@@ -168,7 +173,21 @@ class Archivist(Screen):
         
         table.cursor_type = "row"
         self.log_kernel("SYSTEM INITIALIZED. WELCOME, ARCHITECT BUBB.")
+        self.live_timer = self.set_interval(0.1, self.update_timers)
         self.scrape_tracks()
+    
+    def update_timers(self) -> None:
+        if hasattr(self, 'harvest_start') and not hasattr(self, 'harvest_dur_fixed'):
+            self.live_harvest_time = (datetime.now() - self.harvest_start).total_seconds()
+            self.query_one("#harvest-timer").update(f"HARVEST: {self.live_harvest_time:.1f}s")
+        
+        if self.is_ingesting and self.ingest_start:
+            self.live_ingest_time = (datetime.now() - self.ingest_start).total_seconds()
+            self.query_one("#ingest-timer").update(f"INGEST: {self.live_ingest_time:.1f}s")
+        
+        self.total_size_bytes = sum(self.track_sizes.values())
+        size_mb = self.total_size_bytes / (1024 * 1024)
+        self.query_one("#total-size-label").update(f"SIZE: {size_mb:.2f} MB")
 
     def log_kernel(self, message: str):
         log_widget = self.query_one(Log)
@@ -284,6 +303,7 @@ class Archivist(Screen):
 
                 self.is_scraping = False
                 self.harvest_dur = (datetime.now() - self.harvest_start).total_seconds()
+                self.harvest_dur_fixed = True
                 self.log_kernel(f"COMPLETE HARVEST: {len(self.tracks)} TRACK DESCRIPTORS IN {self.harvest_dur:.1f}s.")
                 self.log_kernel("VECTORS SYNCHRONIZED. READY FOR INGESTION.")
             except Exception as e:
@@ -605,6 +625,8 @@ class Archivist(Screen):
         def _write_report_to_disk():
             combined_time = self.harvest_dur + ingest_dur
             avg_time = combined_time / max(self.stats["complete"], 1)
+            total_size = sum(self.track_sizes.values())
+            avg_size = total_size / max(self.stats["complete"], 1)
             largest_size = max(self.track_sizes.values()) if self.track_sizes else 0
             largest_track = None
             if largest_size > 0:
@@ -623,6 +645,8 @@ class Archivist(Screen):
                 "ingest_duration_seconds": round(ingest_dur, 2),
                 "combined_logic_duration": round(combined_time, 2),
                 "avg_time_per_song": round(avg_time, 2),
+                "total_collection_size_bytes": total_size,
+                "avg_track_size_bytes": round(avg_size, 2),
                 "stats": self.stats,
                 "largest_song": largest_track,
                 "largest_size_bytes": largest_size,
@@ -717,6 +741,11 @@ class StatsScreen(Screen):
         logic_time_str = f"{int(combined_time // 60)}m {int(combined_time % 60)}s"
         avg_time_str = f"{int(avg_time // 60)}m {int(avg_time % 60)}s" if avg_time > 0 else "0s"
         
+        total_size = sum(self.track_sizes.values())
+        total_mb = total_size / (1024 * 1024)
+        avg_size = total_size / max(complete, 1)
+        avg_mb = avg_size / (1024 * 1024)
+        
         yield Container(
             Static("==================================================", id="stats-line-1"),
             Static("         INGESTION MISSION REPORT: COMPLETE       ", id="stats-line-2"),
@@ -730,6 +759,8 @@ class StatsScreen(Screen):
             Label(f"INGESTION LOGIC:       [bold cyan]{self.ingest_dur:.1f}s[/]"),
             Label(f"COMBINED EFFICIENCY:   [bold green]{logic_time_str}[/]"),
             Label(f"AVG TIME PER TRACK:     [bold cyan]{avg_time_str}[/]"),
+            Label(f"TOTAL COLLECTION SIZE: [bold magenta]{total_mb:.2f} MB[/]"),
+            Label(f"AVG TRACK SIZE:        [bold magenta]{avg_mb:.2f} MB[/]"),
             Label(f"LARGEST TRACK SIZE:     [bold magenta]{largest_mb:.2f} MB[/]"),
             Static("", id="spacer-2"),
             Label("[dim]Full report saved to mission_history.json[/]"),
@@ -841,6 +872,13 @@ class AetherApp(App):
             align: right middle;
             padding-right: 2;
             margin-bottom: 2;
+        }}
+
+        #harvest-timer, #ingest-timer, #total-size-label {{
+            color: {t['accent']};
+            text-style: bold;
+            margin-right: 2;
+            width: auto;
         }}
 
         #go-btn {{
