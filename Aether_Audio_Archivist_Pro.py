@@ -473,7 +473,11 @@ class WatchdogScreen(Screen):
 
     def _scan_clipboard_history(self) -> None:
         """Scan Windows clipboard history for Spotify URLs copied before launch."""
+        temp_dir = Path(os.environ.get("TEMP", "."))
+        script_path = temp_dir / "_aether_clip_hist.ps1"
+        output_path = temp_dir / "_aether_clip_urls.txt"
         ps_script = r'''
+$outputFile = "''' + str(output_path).replace("\\", "\\\\") + r'''"
 Add-Type -AssemblyName System.Runtime.WindowsRuntime
 $asTaskMethods = [System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object {
     $_.Name -eq 'AsTask' -and $_.GetParameters().Count -eq 1 -and
@@ -485,46 +489,47 @@ function Await($WinRtTask, $ResultType) {
     $netTask.Wait(-1) | Out-Null
     $netTask.Result
 }
+$urls = @()
 try {
     $result = Await ([Windows.ApplicationModel.DataTransfer.Clipboard,Windows.ApplicationModel.DataTransfer,ContentType=WindowsRuntime]::GetHistoryItemsAsync()) ([Windows.ApplicationModel.DataTransfer.ClipboardHistoryItemsResult])
     foreach ($item in $result.Items) {
         try {
             if ($item.Content.Contains([Windows.ApplicationModel.DataTransfer.StandardDataFormats]::Text)) {
                 $text = Await ($item.Content.GetTextAsync()) ([string])
-                if ($text -match 'open\.spotify\.com/playlist/') {
-                    Write-Output $text
+                $matches = [regex]::Matches($text, 'https?://open\.spotify\.com/playlist/[A-Za-z0-9]+[^\s]*')
+                foreach ($m in $matches) {
+                    $urls += $m.Value
                 }
             }
         } catch { }
     }
-} catch {
-    Write-Error "HISTORY_UNAVAILABLE: $_"
-}
+} catch { }
+$urls | Out-File -FilePath $outputFile -Encoding utf8
 '''
-        script_path = Path(os.environ.get("TEMP", ".")) / "_aether_clip_hist.ps1"
         try:
+            # Clean previous output
+            output_path.unlink(missing_ok=True)
             script_path.write_text(ps_script, encoding="utf-8")
-            result = subprocess.run(
+            subprocess.run(
                 ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script_path)],
                 capture_output=True, text=True, timeout=15
             )
-            output = (result.stdout or "").strip()
-            stderr = (result.stderr or "").strip()
 
-            if not output:
-                if stderr:
-                    self._wd_log(f"Clipboard history: {stderr[:100]}")
-                else:
-                    self._wd_log("No Spotify URLs found in clipboard history.")
+            if not output_path.exists():
+                self._wd_log("Clipboard history scan produced no output file.")
+                return
+
+            raw = output_path.read_text(encoding="utf-8-sig").strip()
+            if not raw:
+                self._wd_log("No Spotify URLs found in clipboard history.")
                 return
 
             table = self.query_one("#wd-table", DataTable)
             history_urls = []
-            for line in output.splitlines():
-                urls = re.findall(r'https?://open\.spotify\.com/playlist/[A-Za-z0-9]+[^\s]*', line)
-                for url in urls:
-                    if url not in self._seen_urls:
-                        history_urls.append(url)
+            for line in raw.splitlines():
+                url = line.strip()
+                if url and "open.spotify.com/playlist/" in url and url not in self._seen_urls:
+                    history_urls.append(url)
 
             if not history_urls:
                 self._wd_log("No Spotify URLs found in clipboard history.")
@@ -546,6 +551,8 @@ try {
             self._wd_log(f"Clipboard history scan error: {e}")
         finally:
             try: script_path.unlink(missing_ok=True)
+            except: pass
+            try: output_path.unlink(missing_ok=True)
             except: pass
 
     def _wd_log(self, msg: str) -> None:
