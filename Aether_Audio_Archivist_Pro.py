@@ -2246,10 +2246,11 @@ class AetherApp(App):
     }
 
     #preview-box {
-        height: 100%;
+        height: 1fr;
         padding: 1 3;
         border: solid $accent;
         background: $bg;
+        layout: vertical;
     }
 
     #pp-line-1, #pp-line-2, #pp-line-3 {
@@ -2267,13 +2268,13 @@ class AetherApp(App):
     }
 
     #pp-table {
-        height: 1fr;
+        max-height: 70%;
         border: solid $dim;
         margin-top: 1;
     }
 
     #pp-btn-row {
-        height: auto;
+        height: 3;
         width: 100%;
         margin-top: 1;
     }
