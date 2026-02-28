@@ -6,9 +6,15 @@ import random
 import subprocess
 import functools
 import re
-import yt_dlp
+import math
+import signal
+import unicodedata
+import urllib.request
+from io import BytesIO
+from difflib import SequenceMatcher
 from pathlib import Path
 from datetime import datetime
+import yt_dlp
 
 # ARCHITECT: MATTHEW BUBB (SOLE PROGRAMMER)
 # ==============================================================================
@@ -18,8 +24,19 @@ DUR_REGEX = re.compile(r'^\d{1,2}:\d{2}(:\d{2})?$')
 
 def bootstrap_dependencies():
     """Ensure system vectors are aligned."""
+    # Frozen EXE mode: all deps are bundled, just configure paths
+    if getattr(sys, 'frozen', False):
+        bundle_dir = Path(sys._MEIPASS) if hasattr(sys, '_MEIPASS') else Path(sys.executable).parent
+        ffmpeg_dir = bundle_dir / "ffmpeg_bundle"
+        if ffmpeg_dir.exists():
+            os.environ["PATH"] = str(ffmpeg_dir) + os.pathsep + os.environ.get("PATH", "")
+        pw_dir = bundle_dir / "playwright_browser"
+        if pw_dir.exists():
+            os.environ["PLAYWRIGHT_BROWSERS_PATH"] = str(pw_dir)
+        return
+
     print("[*] SYNCING SYSTEM VECTORS (BOOTSTRAPPING)...")
-    deps = ["playwright", "yt-dlp", "textual", "rich"]
+    deps = ["playwright", "yt-dlp", "textual", "rich", "mutagen", "Pillow"]
     for dep in deps:
         try:
             __import__(dep)
@@ -50,6 +67,143 @@ from textual.reactive import reactive
 from textual import work, on
 from textual.screen import Screen
 from textual.message import Message
+from textual.widget import Widget
+from textual.strip import Strip
+from rich.text import Text
+from rich.segment import Segment
+from rich.style import Style
+
+# ── Optional dependencies (gracefully degrade if unavailable) ──
+try:
+    from mutagen.id3 import ID3, TIT2, TPE1, TALB, TRCK, APIC, TDRC, ID3NoHeaderError
+    MUTAGEN_OK = True
+except ImportError:
+    MUTAGEN_OK = False
+
+try:
+    from PIL import Image
+    PILLOW_OK = True
+except ImportError:
+    PILLOW_OK = False
+
+# ── Constants ──────────────────────────────────────────────────
+BLOCKLIST_TERMS = frozenset([
+    'podcast', 'mix', 'compilation', 'full album', 'hour', 'hrs',
+    'mashup', 'megamix', 'medley', 'karaoke', 'instrumental only',
+])
+
+STATUS_MAP = {
+    "WAITING FOR PROPAGATION": ("[ WAIT ]", "yellow"),
+    "MATCHING":                ("[ SRCH ]", "cyan"),
+    "QUEUED":                  ("[ REDY ]", "bright_white"),
+    "ARCHIVING":               ("[ ARCH ]", "bright_cyan"),
+    "COMPLETE":                ("[ DONE ]", "bright_green"),
+    "FAILED":                  ("[ FAIL ]", "bright_red"),
+    "NO MATCH":                ("[ MISS ]", "orange1"),
+    "AWAITING USER DECISION":  ("[ USER ]", "bright_yellow"),
+    "ALREADY ARCHIVED":        ("[ SKIP ]", "green"),
+}
+
+_SEARCH_CACHE: dict = {}
+
+# ── Helper functions ───────────────────────────────────────────
+def _is_blocked(title: str) -> bool:
+    """P17: Filter podcast/mix/compilation results."""
+    t = title.lower()
+    return any(term in t for term in BLOCKLIST_TERMS)
+
+def _score_result(result: dict, track: dict, spotify_dur: int) -> float:
+    """P15: Multi-signal scorer — duration 60%, title 30%, views 10%."""
+    dur = result.get('duration', 0) or 0
+    title = result.get('title', '').lower()
+    dur_diff = abs(dur - spotify_dur)
+    if dur_diff > 90:
+        dur_score = 0.0
+    elif dur_diff > 30:
+        dur_score = 0.3 * (1.0 - (dur_diff - 30) / 60.0)
+    else:
+        dur_score = 1.0 - (dur_diff / 30.0) * 0.3
+    search_str = f"{track.get('artist','')} {track.get('title','')}".lower()
+    title_score = SequenceMatcher(None, search_str, title).ratio()
+    views = result.get('view_count', 0) or 0
+    view_score = min(math.log10(max(views, 1)) / 8.0, 1.0)
+    return (dur_score * 0.60) + (title_score * 0.30) + (view_score * 0.10)
+
+def _sanitise_filename(name: str) -> str:
+    """Refactor: NFC-normalized, filesystem-safe filename preservation."""
+    name = unicodedata.normalize('NFC', name)
+    unsafe = set('<>:"/\\|?*')
+    return "".join(c if c not in unsafe else "_" for c in name).strip()
+
+def _fetch_art(thumbnail_url: str) -> bytes | None:
+    """P37: Fetch and resize album art thumbnail."""
+    if not PILLOW_OK or not thumbnail_url:
+        return None
+    try:
+        req = urllib.request.Request(thumbnail_url, headers={'User-Agent': DEFAULT_USER_AGENT})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = resp.read()
+        img = Image.open(BytesIO(data)).convert('RGB').resize((500, 500), Image.LANCZOS)
+        out = BytesIO()
+        img.save(out, format='JPEG', quality=85)
+        return out.getvalue()
+    except Exception:
+        return None
+
+def _make_ratio_bar(complete: int, no_match: int, failed: int, total: int, width: int = 38) -> Text:
+    """P28: ASCII proportion bar for StatsScreen."""
+    if total == 0:
+        return Text("─" * width, style="dim")
+    c_w = int((complete / total) * width)
+    n_w = int((no_match / total) * width)
+    f_w = max(width - c_w - n_w, 0)
+    bar = Text()
+    bar.append("█" * c_w, style="bright_green")
+    bar.append("▓" * n_w, style="yellow")
+    bar.append("░" * f_w, style="red")
+    return bar
+
+# ── MiniSparkline Widget (P21) ──────────────────────────────────
+class MiniSparkline(Widget):
+    """Refined throughput monitor using Rich Segment API."""
+    DEFAULT_CSS = "MiniSparkline { height: 1; width: 24; }"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._events: list[float] = []
+
+    def push_event(self) -> None:
+        self._events.append(datetime.now().timestamp())
+        self.refresh()
+
+    def render_line(self, y: int) -> Strip:
+        if y != 0:
+            return Strip.blank(self.size.width)
+        now = datetime.now().timestamp()
+        self._events = [e for e in self._events if now - e < 60]
+        width = self.size.width
+        if not self._events:
+            return Strip([Segment("▬" * width, Style(color="#333333"))])
+        buckets = [0] * width
+        for e in self._events:
+            idx = min(width - 1, int((now - e) / (60 / width)))
+            buckets[width - 1 - idx] += 1
+        mx = max(buckets) or 1
+        blocks = " ▂▃▄▅▆▇█"
+        segments = []
+        for v in buckets:
+            bi = int((v / mx) * (len(blocks) - 1))
+            char = blocks[bi]
+            color = "bright_green" if bi > 4 else "green"
+            segments.append(Segment(char, Style(color=color)))
+        return Strip(segments)
+
+def render_status_badge(status: str) -> Text:
+    """Fixed-width status badging with architect aesthetics."""
+    badge_data = STATUS_MAP.get(status, ("[ ???? ]", "white"))
+    label, color = badge_data
+    # Sentinel character logic: ■ prefix for that premium TUI feel
+    return Text.assemble(("■ ", color), (f"{label:<12}", f"bold {color}"))
 
 class TrackUpdate(Message):
     """Event vector for track status synchronization."""
@@ -86,9 +240,21 @@ class Launchpad(Screen):
             Label("COLLECTION ALIAS (Library Name):"),
             Input(value=self.app.default_library, id="library-input"),
             Button("INITIALIZE MISSION", variant="success", id="init-btn"),
+            Label("[dim][H] ACCESS MISSION HISTORY ARCHIVE[/]"),
             id="launchpad-box"
         )
         yield Footer()
+
+    BINDINGS = [
+        Binding("h", "mission_history", "History Archive"),
+    ]
+
+    def action_mission_history(self) -> None:
+        self.app.push_screen(MissionHistoryScreen())
+
+    @on(Select.Changed, "#theme-select")
+    def update_theme_preview(self, event: Select.Changed) -> None:
+        self.app.visual_theme = str(event.value)
 
     @on(Button.Pressed, "#init-btn")
     def start_archivist(self) -> None:
@@ -101,6 +267,10 @@ class Launchpad(Screen):
         
         if not url:
             self.app.notify("CRITICAL: SOURCE URL MISSING", severity="error")
+            return
+        # P30: Validate it's a Spotify playlist URL
+        if "open.spotify.com/playlist/" not in url:
+            self.app.notify("ERROR: Must be a Spotify PLAYLIST URL", severity="error")
             return
             
         try:
@@ -117,9 +287,12 @@ class Archivist(Screen):
         Binding("space", "toggle_select", "Toggle Selected"),
         Binding("a", "select_all", "Select Global All"),
         Binding("n", "select_none", "Deselect All"),
+        Binding("s", "toggle_autoscroll", "Toggle Auto-Scroll"),
         Binding("enter", "start_ingest", "COMMENCE INGESTION"),
         Binding("escape", "app.pop_screen", "Back to Launchpad"),
     ]
+
+    auto_scroll = reactive(True)
 
     def __init__(self, url="", library="Aether_Archive", threads=36, engine="cpu"):
         super().__init__()
@@ -141,13 +314,23 @@ class Archivist(Screen):
         self.track_sizes = {}
         self.pending_tasks = 0
         self.col_keys = {}
-        self.semaphore = asyncio.Semaphore(threads)
+        self.semaphore = None # Replaced by Queue
         self.is_ingesting = False
         self.gpu_failures = 0
         self.live_timer = None
+        self.harvest_start = None
+        self.ingest_start = None
+        self.harvest_dur = 0
         self.live_harvest_time = 0
         self.live_ingest_time = 0
         self.total_size_bytes = 0
+        self.track_speeds: dict[int, float] = {}   # P27: live KB/s per track
+        self._running_size: int = 0                # P7:  incremental total
+        self._matched_set: set = set()             # Implement matched_set in scrape_tracks
+        self._dispatched: set = set()              # P2: TRACK DISPATCH SET
+        self.ingest_queue = asyncio.Queue()
+        self.worker_tasks = []
+        self.exit_handled = False
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -160,39 +343,108 @@ class Archivist(Screen):
              yield Label("HARVEST: 0.0s", id="harvest-timer")
              yield Label("INGEST: 0.0s", id="ingest-timer")
              yield Label("SIZE: 0.00 MB", id="total-size-label")
+             yield Label("RATE: 0/min", id="rate-label")         # P25
+             yield MiniSparkline(id="sparkline")                # P21
+             yield Label("[ ↓ LIVE ]", id="scroll-indicator")
              yield Button("GO (COMMENCE INGESTION)", id="go-btn", variant="success")
         yield Footer()
 
     def on_mount(self) -> None:
         table = self.query_one(DataTable)
-        self.col_keys["SEL"] = table.add_column("SEL")
-        self.col_keys["STATUS"] = table.add_column("STATUS")
+        self.col_keys["SEL"]    = table.add_column("SEL", width=5)
+        self.col_keys["STATUS"] = table.add_column("STATUS", width=16)
         self.col_keys["ARTIST"] = table.add_column("ARTIST")
-        self.col_keys["TITLE"] = table.add_column("TITLE")
-        self.col_keys["DUR"] = table.add_column("DUR")
-        
+        self.col_keys["TITLE"]  = table.add_column("TITLE")
+        self.col_keys["DUR"]    = table.add_column("DUR", width=7)
+        self.col_keys["SPEED"]  = table.add_column("SPEED", width=9)  # P27
         table.cursor_type = "row"
         self.log_kernel("SYSTEM INITIALIZED. WELCOME, ARCHITECT BUBB.")
-        self.live_timer = self.set_interval(0.1, self.update_timers)
+        self.live_timer = self.set_interval(0.25, self.update_timers)  # P7: 4Hz not 10Hz
+        
+        # Register signal handlers for graceful exit
+        try:
+            for sig in (signal.SIGINT, signal.SIGTERM):
+                signal.signal(sig, self.handle_exit)
+        except Exception:
+            pass
+            
         self.scrape_tracks()
     
-    def update_timers(self) -> None:
-        if hasattr(self, 'harvest_start') and not hasattr(self, 'harvest_dur_fixed'):
+    def update_timers(self) -> None:  # P7: runs at 4 Hz
+        if self.harvest_start and not hasattr(self, 'harvest_dur_fixed'):
             self.live_harvest_time = (datetime.now() - self.harvest_start).total_seconds()
             self.query_one("#harvest-timer").update(f"HARVEST: {self.live_harvest_time:.1f}s")
-        
         if self.is_ingesting and self.ingest_start:
             self.live_ingest_time = (datetime.now() - self.ingest_start).total_seconds()
             self.query_one("#ingest-timer").update(f"INGEST: {self.live_ingest_time:.1f}s")
-        
-        self.total_size_bytes = sum(self.track_sizes.values())
-        size_mb = self.total_size_bytes / (1024 * 1024)
+            # P25: live throughput rate
+            completed = self.stats.get("complete", 0)
+            rate = (completed / max(self.live_ingest_time, 1)) * 60
+            self.query_one("#rate-label").update(f"RATE: {rate:.1f}/min")
+        # P7: running sum, no full dict re-scan each tick
+        size_mb = self._running_size / (1024 * 1024)
         self.query_one("#total-size-label").update(f"SIZE: {size_mb:.2f} MB")
+        
+        # Auto-scroll indicator update
+        indicator = self.query_one("#scroll-indicator")
+        if self.auto_scroll:
+            indicator.update("[ ↓ LIVE ]")
+            indicator.styles.color = "var(--accent)"
+            indicator.styles.text_style = "bold"
+        else:
+            indicator.update("[ PAUSED ]")
+            indicator.styles.color = "var(--dim)"
+            indicator.styles.text_style = "none"
+
+    def save_checkpoint(self) -> None:
+        """Write session persistence vector to disk."""
+        checkpoint_path = Path(os.getcwd()) / "session_state.json"
+        try:
+            state = {
+                "timestamp": datetime.now().isoformat(),
+                "url": self.url,
+                "library": self.library,
+                "stats": self.stats,
+                "tracks": [
+                    {"artist": t["artist"], "title": t["title"], "status": t["status"]}
+                    for t in list(self.tracks) # ROBUST: Copy to avoid concurrent mutation errors
+                ]
+            }
+            with open(checkpoint_path, 'w') as f:
+                json.dump(state, f, indent=2)
+        except Exception as e:
+            self.log_kernel(f"CHECKPOINT ERROR: {e}")
+
+    def handle_exit(self, sig=None, frame=None) -> None:
+        """Graceful shutdown protocol."""
+        if self.exit_handled: return
+        self.exit_handled = True
+        self.log_kernel("GRACEFUL SHUTDOWN INITIATED. CLEANING VECTORS...")
+        
+        # Cancel workers
+        for task in self.worker_tasks:
+            task.cancel()
+            
+        # Cleanup temp files
+        try:
+            for f in self.target_dir.glob("tmp_*.mp3"):
+                f.unlink(missing_ok=True)
+        except Exception as e:
+            self.log_kernel(f"CLEANUP ERR: {e}")
+            
+        self.save_checkpoint()
+        self.app.exit()
 
     def log_kernel(self, message: str):
         log_widget = self.query_one(Log)
         timestamp = datetime.now().strftime("%H:%M:%S")
         log_widget.write_line(f"[{timestamp}] {message}")
+        if self.auto_scroll:
+            log_widget.scroll_end(animate=False)
+
+    def action_toggle_autoscroll(self) -> None:
+        self.auto_scroll = not self.auto_scroll
+        self.log_kernel(f"AUTO-SCROLL: {'ENGAGED' if self.auto_scroll else 'DISENGAGED'}")
 
     @work(exclusive=True)
     async def scrape_tracks(self):
@@ -282,7 +534,15 @@ class Archivist(Screen):
                                 "selected": True,
                                 "status": "WAITING FOR PROPAGATION"
                             })
-                            table.add_row("[X]", "[yellow]WAITING FOR PROPAGATION[/]", track_data['artists'], track_data['title'][:40], track_data['duration'], key=str(idx))
+                            table.add_row(
+                                "[X]", 
+                                render_status_badge("WAITING FOR PROPAGATION"), 
+                                track_data['artists'], 
+                                track_data['title'][:40], 
+                                track_data['duration'], 
+                                "", 
+                                key=str(idx)
+                            )
                     
                     current_count = len(self.tracks)
                     if current_count == last_count:
@@ -293,12 +553,12 @@ class Archivist(Screen):
                         if current_count > 0:
                             self.log_kernel(f"PROPAGATED {current_count} VECTORS...")
                     
-                    # PROACTIVE MATCHING: Resolve vectors immediately
+                    # P2: FIXED O(N²) — only dispatch each index once via matched_set
                     for i in range(len(self.tracks)):
-                        if self.tracks[i]["status"] == "WAITING FOR PROPAGATION":
+                        if i not in self._dispatched and self.tracks[i]["status"] == "WAITING FOR PROPAGATION":
+                            self._dispatched.add(i)
                             self.tracks[i]["status"] = "MATCHING"
-                            table.update_cell(str(i), self.col_keys["STATUS"], "[cyan]MATCHING[/]")
-                            # Run matching in background worker to avoid blocking the harvest loop
+                            table.update_cell(str(i), self.col_keys["STATUS"], render_status_badge("MATCHING"))
                             self.match_vector(i)
 
                 self.is_scraping = False
@@ -362,214 +622,301 @@ class Archivist(Screen):
 
     def action_start_ingest(self) -> None:
         if self.is_scraping:
-            self.app.notify("WARNING: STILL PROXIMITING VECTORS", severity="warning")
-            return
-        
+            self.app.notify("WARNING: STILL HARVESTING VECTORS", severity="warning"); return
         if self.is_ingesting:
-            self.app.notify("WARNING: INGESTION ALREADY COMMENCED", severity="warning")
-            return
-            
-        selected = [i for i, t in enumerate(self.tracks) if t["selected"]]
+            self.app.notify("WARNING: INGESTION ALREADY ACTIVE", severity="warning"); return
+        selected = [i for i, t in enumerate(self.tracks) if t.get("selected")]
         if not selected:
-             self.app.notify("ERROR: NO VECTORS SELECTED", severity="error")
-             return
-        
+            self.app.notify("ERROR: NO VECTORS SELECTED", severity="error"); return
         self.is_ingesting = True
         self.ingest_start = datetime.now()
         self.query_one(ProgressBar).update(total=len(selected), progress=0)
-        
-        # Reset stats without replacing the dictionary object reference
         self.stats.update({"total": len(selected), "complete": 0, "no_match": 0, "failed": 0})
-        self.track_times.clear()
-        self.track_sizes.clear()
-        
+        self.track_times.clear(); self.track_sizes.clear()
         self.pending_tasks = len(selected)
-        self.log_kernel(f"COMMENCING THREADED INGESTION (DEPTH: {self.threads}, ENGINE: {self.engine.upper()}).")
-        for idx in selected:
-            self.ingest_worker(idx)
-
-    @work
-    async def ingest_worker(self, index: int):
-        async with self.semaphore:
-            track = self.tracks[index]
-            self.tracks[index]["status"] = "ARCHIVING"
-            self.post_message(TrackUpdate(index, "ARCHIVING", "cyan"))
-            track_start = datetime.now()
+        self.log_kernel(f"COMMENCING QUEUE-POOL INGESTION (POOL: {self.threads}, ENGINE: {self.engine.upper()}).")
+        
+        # Initialize Workers
+        for _ in range(min(self.threads, len(selected))):
+            self.worker_tasks.append(asyncio.create_task(self.drain_worker()))
             
+        for idx in selected:
+            self.ingest_queue.put_nowait(idx)
+            
+    async def drain_worker(self) -> None:
+        """Consumer coroutine: Drains the ingest_queue with persistence logic."""
+        while True:
             try:
-                # [PHASE 1] SURGICAL SEARCH (USE PRE-MATCHED IF AVAILABLE)
-                best = track.get("youtube_best")
-                if not best:
-                    best = await self.search_track(index, track)
+                index = await self.ingest_queue.get()
+                await self._process_track(index)
+                self.ingest_queue.task_done()
                 
-                if not best:
-                    # search_track already called mark_no_match
-                    return
-
-                # [PHASE 2] HIGH-QUALITY DOWNLOAD
-                temp_path = await self.download_track(index, track, best)
-                if not temp_path:
-                    # Signal dropout during capture
-                    self.tracks[index]["status"] = "FAILED"
-                    self.stats["failed"] += 1
-                    self.post_message(TrackUpdate(index, "FAILED", "red"))
-                    self.query_one(ProgressBar).advance(1)
-                    self.log_kernel(f"SIGNAL LOSS: {track['title']} (Download Failed)")
-                    return
-
-                # [PHASE 3] METADATA TAGGING
-                elapsed = (datetime.now() - track_start).total_seconds()
-                success = await self.tag_track(index, track, temp_path, elapsed)
-                if not success:
-                    # Tagging failure is still a system failure
-                    self.tracks[index]["status"] = "FAILED"
-                    self.stats["failed"] += 1
-                    self.post_message(TrackUpdate(index, "FAILED", "red"))
-                    self.query_one(ProgressBar).advance(1)
-                    return
-                
+                # Check if we are done
+                if self.ingest_queue.empty() and self.pending_tasks == 0:
+                    ingest_dur = (datetime.now() - self.ingest_start).total_seconds()
+                    await self.close_mission(ingest_dur)
+                    
+            except asyncio.CancelledError:
+                break
             except Exception as e:
+                self.log_kernel(f"DRAIN WORKER ERROR: {e}")
+            finally:
+                # Small yield to prevent CPU pinning if errors occur rapidly
+                await asyncio.sleep(0.01)
+
+
+    async def _process_track(self, index: int) -> None:
+        track = self.tracks[index]
+        track_start = datetime.now()
+        try:
+            # P14: Dedup — skip if already in library
+            if self._already_archived(index, track):
+                return
+            self.tracks[index]["status"] = "ARCHIVING"
+            self.post_message(TrackUpdate(index, "ARCHIVING", "bright_cyan"))
+            best = track.get("youtube_best") or await self.search_track(index, track)
+            if not best:
+                return
+            temp_path = await self.download_with_retry(index, track, best)
+            if not temp_path:
                 self.tracks[index]["status"] = "FAILED"
                 self.stats["failed"] += 1
-                self.post_message(TrackUpdate(index, "FAILED", "red"))
+                self.post_message(TrackUpdate(index, "FAILED", "bright_red"))
                 self.query_one(ProgressBar).advance(1)
-                self.log_kernel(f"FAIL: {track['title']} ({e})")
-            finally:
-                self.pending_tasks -= 1
-                if self.pending_tasks == 0:
-                    mission_end = datetime.now()
-                    ingest_dur = (mission_end - self.ingest_start).total_seconds()
-                    await self.close_mission(ingest_dur)
+                self.log_kernel(f"SIGNAL LOSS: {track['title']}")
+                return
+            elapsed = (datetime.now() - track_start).total_seconds()
+            await self.tag_track(index, track, temp_path, best, elapsed)
+        except Exception as e:
+            self.tracks[index]["status"] = "FAILED"
+            self.stats["failed"] += 1
+            self.post_message(TrackUpdate(index, "FAILED", "bright_red"))
+            self.query_one(ProgressBar).advance(1)
+            self.log_kernel(f"FAIL [{index}]: {track.get('title','?')} — {e}")
+        finally:
+            self.pending_tasks -= 1
 
-    async def search_track(self, index, track):
-        """Phase 1: High-Fidelity Search Vector."""
+    def _already_archived(self, index: int, track: dict) -> bool:
+        """P14: Check if track file exists before downloading."""
+        safe = _sanitise_filename(f"{track['artist']} - {track['title']}.mp3")
+        if (self.target_dir / safe).exists():
+            self.tracks[index]["status"] = "ALREADY ARCHIVED"
+            self.stats["complete"] += 1
+            self.post_message(TrackUpdate(index, "ALREADY ARCHIVED", "green"))
+            self.query_one(ProgressBar).advance(1)
+            self.log_kernel(f"SKIP (exists): {track['title']}")
+            return True
+        return False
+
+    async def search_track(self, index: int, track: dict) -> dict | None:
+        """P15/16/17/18: Scored multi-signal search with blocklist and expanded fallbacks."""
+        artist, title = track.get('artist', ''), track.get('title', '')
         queries = [
-            f"{track['artist']} {track['title']} official audio",
-            f"{track['artist']} {track['title']} official video",
-            f"{track['artist']} {track['title']} lyrics",
-            f"{track['artist']} {track['title']}"
+            f"{artist} {title} official audio",
+            f"{artist} {title} official video",
+            f"{title} {artist} audio",
+            f"{artist} {title} lyrics",
+            f"{artist} {title}",
         ]
-        
         results = []
-        for query in queries:
-            if results: break
-            try: results = await self.perform_youtube_search(query)
-            except: continue
-        
-        spotify_dur = self.parse_duration(track['duration'])
-        best = None
-        min_diff = 999
-        for entry in results:
-            duration = entry.get('duration', 0)
-            if duration > 0:
-                diff = abs(duration - spotify_dur)
-                if diff < 30 and diff < min_diff:
-                    min_diff, best = diff, entry
-        
-        if not best:
+        for q in queries:
             if results:
-                self.tracks[index]["status"] = "AWAITING USER DECISION"
-                self.post_message(TrackUpdate(index, "AWAITING USER DECISION", "yellow"))
-                self.post_message(ResolveFailed(index, track, results[:3]))
-                while self.tracks[index].get("youtube_url") is None and self.tracks[index]["status"] == "AWAITING USER DECISION":
-                    await asyncio.sleep(0.2)
-                
-                if self.tracks[index].get("youtube_url"):
-                    best = {"url": self.tracks[index]["youtube_url"], "id": self.tracks[index].get("youtube_id", "manual")}
-                else:
-                    self.mark_no_match(index)
-                    return None
-            else:
-                self.mark_no_match(index)
-                return None
-        return best
+                break
+            
+            # P16: Check cache before search
+            if q in _SEARCH_CACHE:
+                results = _SEARCH_CACHE[q]
+                break
 
-    def mark_no_match(self, index):
+            try:
+                async with asyncio.timeout(120): # IMPLEMENT: timeout(120) guard
+                    results = await self.perform_youtube_search(q)
+                    if results:
+                        _SEARCH_CACHE[q] = results
+            except asyncio.TimeoutError:
+                self.log_kernel(f"SEARCH TIMEOUT for: {q}")
+                continue
+            except Exception:
+                continue
+
+        # P17: filter blocklist
+        results = [r for r in results if not _is_blocked(r.get('title', ''))]
+        spotify_dur = self.parse_duration(track['duration'])
+
+        # P15: score all candidates
+        scored = sorted(
+            [(s, e) for e in results if (s := _score_result(e, track, spotify_dur)) > 0.25],
+            key=lambda x: x[0], reverse=True
+        )
+        if scored:
+            self.tracks[index]["status"] = "QUEUED"
+            self.post_message(TrackUpdate(index, "QUEUED", "bright_white"))
+            return scored[0][1]
+
+        if results:
+            self.tracks[index]["status"] = "AWAITING USER DECISION"
+            self.post_message(TrackUpdate(index, "AWAITING USER DECISION", "bright_yellow"))
+            self.post_message(ResolveFailed(index, track, results[:3]))
+            while self.tracks[index].get("youtube_url") is None and \
+                  self.tracks[index]["status"] == "AWAITING USER DECISION":
+                await asyncio.sleep(0.2)
+            if self.tracks[index].get("youtube_url"):
+                return {"url": self.tracks[index]["youtube_url"],
+                        "id":  self.tracks[index].get("youtube_id", "manual"),
+                        "thumbnail": None}
+        self.mark_no_match(index)
+        return None
+
+    def mark_no_match(self, index: int) -> None:
         self.tracks[index]["status"] = "NO MATCH"
         self.stats["no_match"] += 1
         self.query_one(ProgressBar).advance(1)
-        self.post_message(TrackUpdate(index, "NO MATCH", "orange"))
+        self.post_message(TrackUpdate(index, "NO MATCH", "orange1"))
 
-    async def download_track(self, index, track, best):
-        """Phase 2: High-Fidelity Signal Capture (with Auto-Fallback)."""
-        temp_path = self.target_dir / f"tmp_{best['id']}.mp3"
-        
-        async def _attempt_dl(use_gpu=False):
-            encoder_args = ["--audio-quality", "0"]
-            gpu_args = ["--postprocessor-args", "ffmpeg:-hwaccel cuda"] if use_gpu else []
-            
-            dl_cmd = [
-                sys.executable, "-m", "yt_dlp", best['url'],
-                "--extract-audio", "--audio-format", "mp3", 
-                "--output", str(temp_path.with_suffix("")), "--no-playlist"
-            ] + encoder_args + gpu_args
-            
-            proc = await asyncio.create_subprocess_exec(
-                *dl_cmd, 
-                stdout=asyncio.subprocess.PIPE, 
-                stderr=asyncio.subprocess.PIPE
+    async def download_with_retry(self, index: int, track: dict, best: dict) -> Path | None:
+        """P8/9/10/11/6: yt-dlp Python API, smart format, correct flags, retry+timeout."""
+        track_id = best.get('id', 'tmp')
+        out_stem = self.target_dir / f"tmp_{track_id}"
+        out_path = out_stem.with_suffix('.mp3')
+        url = best['url']
+
+        for attempt in range(3):
+            if attempt:
+                wait = 2 ** attempt
+                self.log_kernel(f"RETRY [{attempt}] {track['title']} — backoff {wait}s")
+                await asyncio.sleep(wait)
+            try:
+                async with asyncio.timeout(120): # IMPLEMENT: asyncio.timeout(120)
+                    ok = await self._dl_api(index, url, out_stem)
+                    if ok and out_path.exists():
+                        return out_path
+            except asyncio.TimeoutError:
+                self.log_kernel(f"TIMEOUT [{index}]: {track['title']}")
+            except Exception as e:
+                self.log_kernel(f"DL ERR [{index}]: {e}")
+        return None
+
+    async def _dl_api(self, index: int, url: str, out_stem: Path) -> bool:
+        """P8: yt-dlp Python API (no subprocess). P9: smart format. P10: correct threads."""
+        def _run():
+            opts = {
+                'format': 'bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio/best',
+                'outtmpl': str(out_stem) + '.%(ext)s',
+                'postprocessors': [{'key': 'FFmpegExtractAudio',
+                                    'preferredcodec': 'mp3', 'preferredquality': '0'}],
+                'postprocessor_args': {
+                    'ffmpeg': [
+                        '-threads', '0',
+                        '-hwaccel', 'auto' if self.engine == 'gpu' else 'none' # P: Engine Vector
+                    ]
+                },
+                'quiet': True, 'no_warnings': True, 'noplaylist': True,
+                'progress_hooks': [self._make_progress_hook(index)],
+            }
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                ydl.download([url])
+            return True
+        try:
+            await asyncio.to_thread(_run)
+            return True
+        except Exception as e:
+            self.log_kernel(f"API DL: {e}")
+            return False
+
+    def _make_progress_hook(self, index: int):
+        """P27: Feed live KB/s into SPEED column via call_from_thread."""
+        def hook(d):
+            if d.get('status') == 'downloading':
+                speed = d.get('speed', 0) or 0
+                try:
+                    self.app.call_from_thread(self._update_speed_cell, index, speed)
+                except Exception:
+                    pass
+        return hook
+
+    def _update_speed_cell(self, index: int, speed: float) -> None:
+        try:
+            kb = speed / 1024
+            self.query_one(DataTable).update_cell(
+                str(index), self.col_keys["SPEED"], f"{kb:.0f}KB/s"
             )
-            stdout, stderr = await proc.communicate()
-            return await asyncio.to_thread(lambda: temp_path.exists()), stderr
+        except Exception:
+            pass
 
-        # PRIMARY ATTEMPT
-        success, stderr = await _attempt_dl(use_gpu=(self.engine == "gpu"))
-        
-        # RECOVERY VECTOR: If GPU fails, fallback to CPU
-        if not success and self.engine == "gpu":
-            self.gpu_failures += 1
-            self.log_kernel(f"RECOVERY: GPU SIGNAL LOSS FOR {track['title']}. INITIATING CPU FALLBACK.")
-            
-            if self.gpu_failures >= 3:
-                self.engine = "cpu"
-                self.log_kernel("SYSTEMIC GPU FAILURE DETECTED. PERMANENTLY DE-ESCALATING TO CPU ENGINE FOR MISSION STABILITY.")
-            
-            success, stderr = await _attempt_dl(use_gpu=False)
-        elif success and self.engine == "gpu":
-            # Reset counter on success to ensure we only de-escalate if it's truly systemic
-            self.gpu_failures = 0
+    async def tag_track(self, index: int, track: dict, temp_path: Path,
+                        best: dict, elapsed: float) -> bool:
+        """P34/35/36/37: In-place mutagen tagging, full ID3, Unicode filename, album art."""
+        safe_name = _sanitise_filename(f"{track['artist']} - {track['title']}.mp3")
+        dest = self.target_dir / safe_name
 
-        if not success:
-            err_msg = stderr.decode().strip() if stderr else "UNKNOWN ERROR"
-            self.log_kernel(f"DL ERROR: {err_msg[:200]}")
-            return None
-            
-        return temp_path
+        def _tag_and_move():
+            if dest.exists():
+                dest.unlink()
+            temp_path.rename(dest)
+            if not dest.exists():
+                return False
+            if MUTAGEN_OK:
+                try:
+                    try:
+                        tags = ID3(str(dest))
+                    except ID3NoHeaderError:
+                        tags = ID3()
+                    
+                    tags.clear()
+                    # TIT2: Title, TPE1: Artist, TALB: Album (Library), TRCK: Track Num, TDRC: Year
+                    tags.add(TIT2(encoding=3, text=track['title']))
+                    tags.add(TPE1(encoding=3, text=track['artist']))
+                    tags.add(TALB(encoding=3, text=self.library))
+                    
+                    idx_str = str(track.get('track_num', index + 1))
+                    tags.add(TRCK(encoding=3, text=idx_str))
+                    
+                    # TDRC: Date (Year)
+                    year = (best.get('upload_date') or "")[:4]
+                    if year:
+                        tags.add(TDRC(encoding=3, text=year))
 
-    async def tag_track(self, index, track, temp_path, elapsed):
-        """Phase 3: Metadata Imprinting and Finalization."""
-        final_name = "".join([c if c.isalnum() or c in " -_." else "_" for c in f"{track['artist']} - {track['title']}.mp3"])
-        dest = self.target_dir / final_name
-        
-        tag_prefix = ["ffmpeg"]
-        if self.engine == "gpu":
-            tag_prefix = ["ffmpeg", "-hwaccel", "cuda"]
-        
-        tag_cmd = tag_prefix + [
-            "-i", str(temp_path),
-            "-metadata", f"artist={track['artist']}", "-metadata", f"title={track['title']}",
-            "-codec", "copy", str(dest), "-y"
-        ]
-        
-        proc = await asyncio.create_subprocess_exec(*tag_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-        await proc.communicate()
-        
-        if await asyncio.to_thread(lambda: temp_path.exists()):
-            await asyncio.to_thread(os.remove, temp_path)
-        
-        if await asyncio.to_thread(lambda: os.path.exists(dest)):
+                    # APIC: Album Art (YouTube Thumbnail)
+                    # Use existing art fetcher which handles Pillow scaling
+                    art = _fetch_art(best.get('thumbnail'))
+                    if art:
+                        tags.add(APIC(
+                            encoding=3, mime='image/jpeg', type=3,
+                            desc='Cover', data=art
+                        ))
+                    
+                    tags.save(str(dest), v2_version=3)
+                except Exception as e:
+                    self.app.call_from_thread(self.log_kernel, f"MUTAGEN OVERRIDE ERR: {e}")
+            return True
+
+        success = await asyncio.to_thread(_tag_and_move)
+        if success:
             stat = await asyncio.to_thread(os.stat, dest)
             self.track_sizes[index] = stat.st_size
+            self._running_size += stat.st_size          # P7: incremental sum
             self.track_times[index] = elapsed
             self.tracks[index]["status"] = "COMPLETE"
             self.stats["complete"] += 1
-            self.post_message(TrackUpdate(index, "COMPLETE", "green"))
+            self.post_message(TrackUpdate(index, "COMPLETE", "bright_green"))
             self.query_one(ProgressBar).advance(1)
-            self.log_kernel(f"COMPLETE: {track['title']} ({elapsed:.1f}s)")
+            # P27: replace speed with final file size
+            size_mb = stat.st_size / (1024 * 1024)
+            try:
+                self.query_one(DataTable).update_cell(
+                    str(index), self.col_keys["SPEED"], f"{size_mb:.2f}MB"
+                )
+            except Exception:
+                pass
+            # P21: feed sparkline
+            try:
+                self.query_one(MiniSparkline).push_event()
+            except Exception:
+                pass
+            self.log_kernel(f"COMPLETE: {track['title']} ({elapsed:.1f}s, {size_mb:.2f}MB)")
             return True
-        else:
-            self.log_kernel(f"TAGGING FAILURE: {track['title']} (Output not found)")
-            return False
+        self.log_kernel(f"TAG FAIL: {track['title']}")
+        return False
 
     async def close_mission(self, ingest_dur):
         ingest_dur = round(ingest_dur, 2)
@@ -584,7 +931,8 @@ class Archivist(Screen):
     def on_track_update(self, message: TrackUpdate) -> None:
         table = self.query_one(DataTable)
         try:
-            table.update_cell(str(message.index), self.col_keys["STATUS"], f"[{message.color}]{message.status}[/]")
+            table.update_cell(str(message.index), self.col_keys["STATUS"], render_status_badge(message.status))
+            self.save_checkpoint() # P: Session checkpoint after state change
         except: pass
     
     def on_resolve_failed(self, message: ResolveFailed) -> None:
@@ -596,7 +944,6 @@ class Archivist(Screen):
             ydl_opts = {
                 'quiet': True,
                 'no_warnings': True,
-                'extract_flat': True,
                 'skip_download': True,
             }
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -664,16 +1011,73 @@ class Archivist(Screen):
             
             history = []
             if history_file.exists():
-                with open(history_file, 'r') as f:
-                    history = json.load(f)
+                try:
+                    with open(history_file, 'r', encoding='utf-8') as f:
+                        history = json.load(f)
+                        if not isinstance(history, list): history = []
+                except (json.JSONDecodeError, UnicodeDecodeError):
+                    history = []
             
             history.append(report)
-            with open(history_file, 'w') as f:
+            with open(history_file, 'w', encoding='utf-8') as f:
                 json.dump(history, f, indent=2)
             return history_file
 
         saved_path = await asyncio.to_thread(_write_report_to_disk)
         self.log_kernel(f"MISSION REPORT SAVED: {saved_path}")
+
+class MissionHistoryScreen(Screen):
+    """Surgical display of past ingestion operations."""
+    BINDINGS = [
+        Binding("escape", "app.pop_screen", "Back to Ops Interface"),
+    ]
+
+    def compose(self) -> ComposeResult:
+        yield Header()
+        yield Container(
+            Static("==================================================", id="history-line-1"),
+            Static("          GLOBAL MISSION HISTORY ARCHIVE          ", id="history-line-2"),
+            Static("==================================================", id="history-line-3"),
+            DataTable(id="history-table"),
+            id="history-container"
+        )
+        yield Footer()
+
+    def on_mount(self) -> None:
+        table = self.query_one(DataTable)
+        table.add_column("DATE", width=20)
+        table.add_column("LIBRARY (COLLECTION)")
+        table.add_column("SUCCESS")
+        table.add_column("MISS")
+        table.add_column("FAIL")
+        table.add_column("SIZE (MB)", width=10)
+        table.cursor_type = "row"
+
+        history_file = Path(os.getcwd()) / "mission_history.json"
+        if history_file.exists():
+            try:
+                with open(history_file, 'r', encoding='utf-8') as f:
+                    history = json.load(f)
+                # Sort by timestamp descending (newest first)
+                history.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+                for entry in history:
+                    ts = entry.get("timestamp", "").replace("T", " ")[:19]
+                    lib = entry.get("library", "Unknown")
+                    stats = entry.get("stats", {})
+                    success = stats.get("complete", 0)
+                    miss = stats.get("no_match", 0)
+                    failed = stats.get("failed", 0)
+                    size_bytes = entry.get("total_collection_size_bytes", 0)
+                    size_mb = size_bytes / (1024 * 1024)
+                    table.add_row(
+                        ts, lib, 
+                        f"[bold green]{success}[/]", 
+                        f"[orange1]{miss}[/]", 
+                        f"[bright_red]{failed}[/]", 
+                        f"{size_mb:.2f}"
+                    )
+            except Exception as e:
+                self.app.notify(f"HISTORY PARSE ERROR: {e}", severity="error")
 
 class ResolveMatchScreen(Screen):
     """Screen to resolve failed track matches by showing user options."""
@@ -807,158 +1211,194 @@ class AetherApp(App):
 
     visual_theme = reactive("matrix")
 
-    def get_css(self) -> str:
+    # ==========================================================================
+    # STATIC CSS — Parsed once at init. Theme colors injected via $variables.
+    # ==========================================================================
+    DEFAULT_CSS = """
+    Screen {
+        background: $bg;
+        color: $text;
+    }
+
+    #launchpad-box {
+        align: center middle;
+        height: auto;
+        width: 70;
+        border: heavy $accent;
+        padding: 1 3;
+        background: $surface;
+    }
+
+    Static {
+        text-align: center;
+        width: 100%;
+        color: $accent;
+        text-style: bold;
+    }
+
+    Label {
+        margin-top: 1;
+        color: $dim;
+        text-style: italic;
+    }
+
+    Input {
+        background: $bg;
+        color: #ffffff;
+        border: solid $accent;
+        margin-bottom: 2;
+    }
+
+    #init-btn {
+        width: 100%;
+        background: $dim;
+        color: #ffffff;
+        border: solid $accent;
+        text-style: bold;
+    }
+
+    #main-container {
+        height: 1fr;
+    }
+
+    #table-container {
+        height: 70%;
+        border: solid $accent;
+    }
+
+    #data-table {
+        height: 1fr;
+    }
+
+    #action-bar {
+        dock: bottom;
+        height: 3;
+        background: transparent;
+        align: right middle;
+        padding-right: 2;
+        margin-bottom: 2;
+    }
+
+    #harvest-timer, #ingest-timer, #total-size-label, #rate-label {
+        color: $accent;
+        text-style: bold;
+        margin-right: 2;
+        width: auto;
+    }
+    
+    #scroll-indicator {
+        margin-right: 2;
+        width: 12;
+        text-align: center;
+    }
+
+    #go-btn {
+        width: 30;
+        min-height: 3;
+        background: $accent;
+        color: $bg;
+        border: heavy $dim;
+        text-style: bold;
+    }
+
+    #ingest-progress {
+        width: 100%;
+        margin-top: 1;
+        color: $accent;
+    }
+
+    #ingest-progress > .bar--bar {
+        color: $bg;
+        background: $bg;
+    }
+
+    #ingest-progress > .bar--complete {
+        background: $accent;
+    }
+
+    #hacker-log {
+        height: 30%;
+        border-top: solid $accent;
+        background: #000000;
+        color: $accent;
+        padding-left: 1;
+    }
+
+    DataTable > .datatable--header {
+        background: $surface;
+        color: $accent;
+        text-style: bold;
+    }
+
+    #stats-box {
+        align: center middle;
+        height: auto;
+        width: 60;
+        border: thick $accent;
+        padding: 1 3;
+        background: $bg;
+    }
+
+    #stats-box Label {
+        margin-top: 1;
+        width: 100%;
+    }
+
+    #close-stats-btn {
+        margin-top: 2;
+        width: 100%;
+    }
+
+    #resolve-box {
+        align: center middle;
+        height: auto;
+        width: 80;
+        border: heavy #ffff00;
+        padding: 1 3;
+        background: $surface;
+    }
+
+    #resolve-line-1, #resolve-line-2, #resolve-line-3 {
+        color: #ffff00;
+    }
+
+    #spacer-a, #spacer-b {
+        height: 1;
+    }
+
+    #history-container {
+        padding: 1 3;
+        border: solid $accent;
+        height: 100%;
+        background: $bg;
+    }
+    
+    #history-table {
+        margin-top: 1;
+        height: 1fr;
+        border: solid $dim;
+    }
+
+    #history-line-1, #history-line-2, #history-line-3 {
+        color: $accent;
+    }
+    """
+
+    def get_css_variables(self) -> dict[str, str]:
+        """Inject theme color tokens into the CSS variable system."""
+        variables = super().get_css_variables()
         t = self.THEMES[self.visual_theme]
-        return f"""
-        Screen {{
-            background: {t['bg']};
-            color: {t['text']};
-        }}
-
-        #launchpad-box {{
-            align: center middle;
-            height: auto;
-            width: 70;
-            border: heavy {t['accent']};
-            padding: 1 3;
-            background: {t['surface']};
-        }}
-
-        Static {{
-            text-align: center;
-            width: 100%;
-            color: {t['accent']};
-            text-style: bold;
-        }}
-
-        Label {{
-            margin-top: 1;
-            color: {t['dim']};
-            text-style: italic;
-        }}
-
-        Input {{
-            background: {t['bg']};
-            color: #ffffff;
-            border: solid {t['accent']};
-            margin-bottom: 2;
-        }}
-
-        #init-btn {{
-            width: 100%;
-            background: {t['dim']};
-            color: #ffffff;
-            border: solid {t['accent']};
-            text-style: bold;
-        }}
-
-        #main-container {{
-            height: 100%;
-        }}
-
-        #table-container {{
-            height: 70%;
-            border: solid {t['accent']};
-        }}
-
-        #data-table {{
-            height: 1fr;
-        }}
-
-        #action-bar {{
-            dock: bottom;
-            height: 3;
-            background: transparent;
-            align: right middle;
-            padding-right: 2;
-            margin-bottom: 2;
-        }}
-
-        #harvest-timer, #ingest-timer, #total-size-label {{
-            color: {t['accent']};
-            text-style: bold;
-            margin-right: 2;
-            width: auto;
-        }}
-
-        #go-btn {{
-            width: 30;
-            min-height: 3;
-            background: {t['accent']};
-            color: {t['bg']};
-            border: heavy {t['dim']};
-            text-style: bold;
-        }}
-
-        #ingest-progress {{
-            width: 100%;
-            margin-top: 1;
-            color: {t['accent']};
-        }}
-
-        #ingest-progress > .bar--bar {{
-            color: {t['bg']};
-            background: {t['bg']};
-        }}
-
-        #ingest-progress > .bar--complete {{
-            background: {t['accent']};
-        }}
-
-        #hacker-log {{
-            height: 30%;
-            border-top: solid {t['accent']};
-            background: #000000;
-            color: {t['accent']};
-            padding-left: 1;
-        }}
-
-        DataTable > .datatable--header {{
-            background: {t['surface']};
-            color: {t['accent']};
-            text-style: bold;
-        }}
-
-        #stats-box {{
-            align: center middle;
-            height: auto;
-            width: 60;
-            border: thick {t['accent']};
-            padding: 1 3;
-            background: {t['bg']};
-        }}
-
-        #stats-box Label {{
-            margin-top: 1;
-            width: 100%;
-            text-align: left;
-        }}
-
-        #close-stats-btn {{
-            margin-top: 2;
-            width: 100%;
-        }}
-
-        #resolve-box {{
-            align: center middle;
-            height: auto;
-            width: 80;
-            border: heavy #ffff00;
-            padding: 1 3;
-            background: {t['surface']};
-        }}
-
-        #resolve-line-1, #resolve-line-2, #resolve-line-3 {{
-            color: #ffff00;
-        }}
-
-        #spacer-a, #spacer-b {{
-            height: 1;
-        }}
-        """
+        variables["accent"] = t["accent"]
+        variables["bg"] = t["bg"]
+        variables["surface"] = t["surface"]
+        variables["text"] = t["text"]
+        variables["dim"] = t["dim"]
+        return variables
 
     def watch_visual_theme(self) -> None:
-        self.css = self.get_css()
+        if self._running:
+            self.update_theme_vars()
+            self.save_session_state()
 
 
     def __init__(self, url="", library="Aether_Archive", threads=36):
@@ -966,17 +1406,54 @@ class AetherApp(App):
         self.default_url = url
         self.default_library = library
         self.default_threads = threads
+        self._load_session_state()
+
+    def _load_session_state(self) -> None:
+        """Load persistent application state from disk."""
+        try:
+            state_file = Path(os.getcwd()) / "session_state.json"
+            if state_file.exists():
+                with open(state_file, "r", encoding='utf-8') as f:
+                    state = json.load(f)
+                    self.visual_theme = state.get("visual_theme", "matrix")
+        except (Exception, json.JSONDecodeError):
+            pass
+
+    def save_session_state(self) -> None:
+        """Persist application state to disk."""
+        try:
+            state_file = Path(os.getcwd()) / "session_state.json"
+            state = {"visual_theme": self.visual_theme}
+            with open(state_file, "w") as f:
+                json.dump(state, f, indent=2)
+        except Exception:
+            pass
 
     def on_mount(self) -> None:
+        self.update_theme_vars()
         self.push_screen(Launchpad())
+
+    def update_theme_vars(self) -> None:
+        """Surgically update CSS variables on the screen style object."""
+        try:
+            t = self.THEMES[self.visual_theme]
+            self.screen.styles.css_variables = {
+                "accent": t["accent"],
+                "bg": t["bg"],
+                "surface": t["surface"],
+                "text": t["text"],
+                "dim": t["dim"]
+            }
+        except Exception:
+            # Fallback if screen is not yet available
+            pass
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--url", default="")
-    parser.add_argument("--library", default="Aether_Archive")
     parser.add_argument("--threads", type=int, default=36)
     args = parser.parse_args()
     
-    app = AetherApp(url=args.url, library=args.library, threads=args.threads)
+    app = AetherApp(url=args.url, threads=args.threads)
     app.run()

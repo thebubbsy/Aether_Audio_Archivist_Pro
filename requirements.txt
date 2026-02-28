@@ -1,0 +1,7 @@
+textual>=0.40.0
+rich>=13.0
+yt-dlp>=2024.0
+mutagen>=1.47
+Pillow>=10.0
+playwright>=1.40
+pyinstaller>=6.0

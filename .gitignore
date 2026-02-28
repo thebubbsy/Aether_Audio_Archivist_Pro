@@ -11,3 +11,7 @@ Audio_Libraries/
 prs*.json
 mission_history.json
 *.pdf
+session_state.json
+*.spec
+ffmpeg_bundle/
+ffmpeg_extract/
