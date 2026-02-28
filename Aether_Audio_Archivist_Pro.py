@@ -416,7 +416,7 @@ class WatchdogScreen(Screen):
     
     BINDINGS = [
         Binding("escape", "stop_watchdog", "Stop Watchdog"),
-        Binding("enter", "preview_selected", "Preview Playlist"),
+        Binding("p", "preview_selected", "Preview Playlist"),
         Binding("s", "start_selected", "Start Selected"),
         Binding("d", "remove_selected", "Remove Selected"),
     ]
@@ -452,7 +452,7 @@ class WatchdogScreen(Screen):
                 Button("BACK", variant="error", id="wd-back-btn"),
                 id="wd-btn-row"
             ),
-            Label("[dim]ENTER=Preview  |  S=Start  |  D=Remove  |  ESC=Back[/]", id="wd-hint"),
+            Label("[dim]ENTER/P=Preview  |  S=Start  |  D=Remove  |  ESC=Back[/]", id="wd-hint"),
             id="watchdog-box"
         )
         yield Footer()
@@ -655,6 +655,10 @@ $urls | Out-File -FilePath $outputFile -Encoding utf8
             return int(str(row_key))
         except Exception:
             return -1
+
+    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+        """Handle Enter on a DataTable row — open preview."""
+        self.action_preview_selected()
 
     def action_preview_selected(self) -> None:
         """Open PlaylistPreviewScreen for the highlighted playlist."""
