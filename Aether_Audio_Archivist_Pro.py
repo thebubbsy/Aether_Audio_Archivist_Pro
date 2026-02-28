@@ -230,7 +230,11 @@ class Launchpad(Screen):
             Static("      AETHER AUDIO ARCHIVIST PRO // M. BUBB       ", id="title-line-2"),
             Static("==================================================", id="title-line-3"),
             Label("SPOTIFY PLAYLIST SOURCE (URL):"),
-            Input(value=self.app.default_url, placeholder="https://open.spotify.com/playlist/...", id="url-input"),
+            Horizontal(
+                Input(value=self.app.default_url, placeholder="https://open.spotify.com/playlist/...", id="url-input"),
+                Button("PASTE", variant="warning", id="paste-btn"),
+                id="url-row"
+            ),
             Label("CONCURRENCY THREADS (Surgical Multi-Thread):"),
             Input(value=str(self.app.default_threads), id="threads-input"),
             Label("ENGINE ACCELERATION (NVIDIA GPU / CPU):"),
@@ -255,6 +259,23 @@ class Launchpad(Screen):
     @on(Select.Changed, "#theme-select")
     def update_theme_preview(self, event: Select.Changed) -> None:
         self.app.visual_theme = str(event.value)
+
+    @on(Button.Pressed, "#paste-btn")
+    def paste_clipboard(self) -> None:
+        """Read system clipboard and populate the URL input."""
+        try:
+            result = subprocess.run(
+                ["powershell", "-Command", "Get-Clipboard"],
+                capture_output=True, text=True, timeout=3
+            )
+            clip = result.stdout.strip()
+            if clip:
+                self.query_one("#url-input").value = clip
+                self.app.notify("Clipboard pasted", severity="information")
+            else:
+                self.app.notify("Clipboard is empty", severity="warning")
+        except Exception:
+            self.app.notify("Failed to read clipboard", severity="error")
 
     @on(Button.Pressed, "#init-btn")
     def start_archivist(self) -> None:
@@ -1326,6 +1347,21 @@ class AetherApp(App):
         color: #ffffff;
         border: solid $accent;
         text-style: bold;
+    }
+
+    #url-row {
+        height: auto;
+        width: 100%;
+    }
+
+    #url-row Input {
+        width: 1fr;
+    }
+
+    #paste-btn {
+        width: 12;
+        min-height: 3;
+        margin-left: 1;
     }
 
     #main-container {
