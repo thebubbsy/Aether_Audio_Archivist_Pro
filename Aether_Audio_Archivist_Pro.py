@@ -1509,10 +1509,7 @@ class Archivist(Screen):
                 'postprocessors': [{'key': 'FFmpegExtractAudio',
                                     'preferredcodec': 'mp3', 'preferredquality': '0'}],
                 'postprocessor_args': {
-                    'ffmpeg': [
-                        '-threads', '0',
-                        '-hwaccel', 'auto' if self.engine == 'gpu' else 'none' # P: Engine Vector
-                    ]
+                    'ExtractAudio': ['-threads', '0'],
                 },
                 'quiet': True, 'no_warnings': True, 'noplaylist': True,
                 'progress_hooks': [self._make_progress_hook(index)],
