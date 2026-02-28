@@ -506,7 +506,7 @@ try {
                 ["powershell", "-NoProfile", "-Command", PS_SCRIPT],
                 capture_output=True, text=True, timeout=10
             )
-            output = result.stdout.strip()
+            output = (result.stdout or "").strip()
             if not output or output == "HISTORY_UNAVAILABLE":
                 self._wd_log("Clipboard history unavailable (enable via Win+V settings).")
                 return
@@ -605,7 +605,7 @@ try {
             entry["status"] = "QUEUED"
             table = self.query_one("#wd-table", DataTable)
             try:
-                table.update_cell(str(idx), "name", name[:40])
+                table.update_cell(str(idx), "name", name[:60])
                 table.update_cell(str(idx), "tracks", str(len(tracks)))
                 table.update_cell(str(idx), "status", "QUEUED")
             except Exception:
