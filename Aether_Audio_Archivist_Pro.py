@@ -145,6 +145,7 @@ class Archivist(Screen):
         self.is_ingesting = False
         self.harvest_dur = 0
         self.ingest_start = None
+        self.gpu_failures = 0
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -496,8 +497,17 @@ class Archivist(Screen):
         
         # RECOVERY VECTOR: If GPU fails, fallback to CPU
         if not success and self.engine == "gpu":
+            self.gpu_failures += 1
             self.log_kernel(f"RECOVERY: GPU SIGNAL LOSS FOR {track['title']}. INITIATING CPU FALLBACK.")
+            
+            if self.gpu_failures >= 3:
+                self.engine = "cpu"
+                self.log_kernel("SYSTEMIC GPU FAILURE DETECTED. PERMANENTLY DE-ESCALATING TO CPU ENGINE FOR MISSION STABILITY.")
+            
             success, stderr = await _attempt_dl(use_gpu=False)
+        elif success and self.engine == "gpu":
+            # Reset counter on success to ensure we only de-escalate if it's truly systemic
+            self.gpu_failures = 0
 
         if not success:
             err_msg = stderr.decode().strip() if stderr else "UNKNOWN ERROR"
