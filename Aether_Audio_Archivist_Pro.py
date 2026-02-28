@@ -333,9 +333,10 @@ def _write_failure_log(entry: dict) -> None:
     with open(log_path, 'w', encoding='utf-8') as f:
         json.dump(history, f, indent=2)
 
-async def scrape_playlist_data(url: str) -> list[dict]:
-    """Standalone Playwright scraper — returns [{artist, title, duration}, ...] with no UI coupling."""
+async def scrape_playlist_data(url: str) -> tuple[str, list[dict]]:
+    """Standalone Playwright scraper — returns (playlist_name, [{artist, title, duration}, ...])."""
     from playwright.async_api import async_playwright
+    playlist_name = "Unknown Playlist"
     dur_regex = re.compile(r'^\d{1,2}:\d{2}(:\d{2})?$')
     tracks = []
     processed_ids = set()
@@ -351,6 +352,13 @@ async def scrape_playlist_data(url: str) -> list[dict]:
             try: await page.click('button#onetrust-accept-btn-handler', timeout=3000)
             except: pass
             await page.wait_for_selector('[data-testid="tracklist-row"]', timeout=30000)
+            # Extract playlist name from page
+            try:
+                raw_title = await page.title()
+                # Spotify titles are like "Playlist Name - playlist by Creator | Spotify"
+                playlist_name = raw_title.split(" - ")[0].strip() if raw_title else "Unknown Playlist"
+            except Exception:
+                pass
 
             last_count = -1
             stable_count = 0
@@ -398,7 +406,7 @@ async def scrape_playlist_data(url: str) -> list[dict]:
             pass
         finally:
             await browser.close()
-    return tracks
+    return playlist_name, tracks
 
 class WatchdogScreen(Screen):
     """Clipboard Watchdog — collect Spotify URLs, preview tracks, then process on demand."""
@@ -449,7 +457,7 @@ class WatchdogScreen(Screen):
     def on_mount(self) -> None:
         table = self.query_one("#wd-table", DataTable)
         table.add_column("#", width=4, key="idx")
-        table.add_column("PLAYLIST URL", key="url")
+        table.add_column("PLAYLIST", key="name")
         table.add_column("TRACKS", width=8, key="tracks")
         table.add_column("STATUS", width=14, key="status")
         table.cursor_type = "row"
@@ -498,8 +506,8 @@ class WatchdogScreen(Screen):
         for url in new_urls:
             self._seen_urls.add(url)
             idx = len(self._url_list)
-            self._url_list.append({"url": url, "status": "SCANNING", "tracks": [], "track_count": 0})
-            table.add_row(str(idx + 1), url[:55], "...", "SCANNING", key=str(idx))
+            self._url_list.append({"url": url, "status": "SCANNING", "tracks": [], "track_count": 0, "name": "Scanning..."})
+            table.add_row(str(idx + 1), "Scanning...", "...", "SCANNING", key=str(idx))
             self._wd_log(f"DETECTED: {url[:70]}")
             self.app.notify("Playlist URL collected", severity="information")
             self._scan_playlist(idx)
@@ -518,17 +526,19 @@ class WatchdogScreen(Screen):
         except Exception:
             pass
         try:
-            tracks = await scrape_playlist_data(entry["url"])
+            name, tracks = await scrape_playlist_data(entry["url"])
             entry["tracks"] = tracks
             entry["track_count"] = len(tracks)
+            entry["name"] = name
             entry["status"] = "QUEUED"
             table = self.query_one("#wd-table", DataTable)
             try:
+                table.update_cell(str(idx), "name", name[:40])
                 table.update_cell(str(idx), "tracks", str(len(tracks)))
                 table.update_cell(str(idx), "status", "QUEUED")
             except Exception:
                 pass
-            self._wd_log(f"SCANNED [{idx+1}]: {len(tracks)} tracks found")
+            self._wd_log(f"SCANNED [{idx+1}]: \"{name}\" — {len(tracks)} tracks")
         except Exception as e:
             entry["status"] = "SCAN FAIL"
             self._wd_log(f"SCAN FAILED [{idx+1}]: {e}")
