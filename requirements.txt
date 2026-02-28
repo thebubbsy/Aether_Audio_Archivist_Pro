@@ -1,4 +1,4 @@
-textual>=0.40.0
+textual==1.0.0
 rich>=13.0
 yt-dlp>=2024.0
 mutagen>=1.47
