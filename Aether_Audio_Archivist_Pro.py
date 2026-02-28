@@ -464,10 +464,79 @@ class WatchdogScreen(Screen):
         table.add_column("TRACKS", width=8, key="tracks")
         table.add_column("STATUS", width=14, key="status")
         table.cursor_type = "row"
-        self._wd_log("WATCHDOG ONLINE. Clipboard scanning every 1.5s.")
+        self._wd_log("WATCHDOG ONLINE. Scanning clipboard history...")
         self._wd_log(f"Library: {self.library}  |  Threads: {self.threads}  |  Engine: {self.engine.upper()}")
+        # Scan clipboard history first (retroactive collection)
+        self._scan_clipboard_history()
         self._wd_log("Copy Spotify playlist URLs. Press S to start one, ENTER to preview.")
         self._poll_timer = self.set_interval(1.5, self._poll_clipboard)
+
+    def _scan_clipboard_history(self) -> None:
+        """Scan Windows clipboard history for Spotify URLs copied before launch."""
+        PS_SCRIPT = r'''
+Add-Type -AssemblyName System.Runtime.WindowsRuntime
+$asTaskMethods = [System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object {
+    $_.Name -eq 'AsTask' -and $_.GetParameters().Count -eq 1 -and
+    $_.GetParameters()[0].ParameterType.Name -eq 'IAsyncOperation`1'
+}
+$asTask = $asTaskMethods[0]
+function Await($WinRtTask, $ResultType) {
+    $netTask = $asTask.MakeGenericMethod($ResultType).Invoke($null, @($WinRtTask))
+    $netTask.Wait(-1) | Out-Null
+    $netTask.Result
+}
+try {
+    $result = Await ([Windows.ApplicationModel.DataTransfer.Clipboard,Windows.ApplicationModel.DataTransfer,ContentType=WindowsRuntime]::GetHistoryItemsAsync()) ([Windows.ApplicationModel.DataTransfer.ClipboardHistoryItemsResult])
+    foreach ($item in $result.Items) {
+        try {
+            if ($item.Content.Contains([Windows.ApplicationModel.DataTransfer.StandardDataFormats]::Text)) {
+                $text = Await ($item.Content.GetTextAsync()) ([string])
+                if ($text -match 'open\.spotify\.com/playlist/') {
+                    Write-Output $text
+                }
+            }
+        } catch { }
+    }
+} catch {
+    Write-Output "HISTORY_UNAVAILABLE"
+}
+'''
+        try:
+            result = subprocess.run(
+                ["powershell", "-NoProfile", "-Command", PS_SCRIPT],
+                capture_output=True, text=True, timeout=10
+            )
+            output = result.stdout.strip()
+            if not output or output == "HISTORY_UNAVAILABLE":
+                self._wd_log("Clipboard history unavailable (enable via Win+V settings).")
+                return
+
+            table = self.query_one("#wd-table", DataTable)
+            history_urls = []
+            for line in output.splitlines():
+                urls = re.findall(r'https?://open\.spotify\.com/playlist/[A-Za-z0-9]+[^\s]*', line)
+                for url in urls:
+                    if url not in self._seen_urls:
+                        history_urls.append(url)
+
+            if not history_urls:
+                self._wd_log("No Spotify URLs found in clipboard history.")
+                return
+
+            self._wd_log(f"CLIPBOARD HISTORY: Found {len(history_urls)} playlist URL(s)!")
+            for url in history_urls:
+                self._seen_urls.add(url)
+                idx = len(self._url_list)
+                self._url_list.append({"url": url, "status": "SCANNING", "tracks": [], "track_count": 0, "name": "Scanning..."})
+                table.add_row(str(idx + 1), "Scanning...", "...", "SCANNING", key=str(idx))
+                self._wd_log(f"HISTORY: {url[:70]}")
+                self._scan_playlist(idx)
+            self._update_counts()
+            self.app.notify(f"Found {len(history_urls)} URL(s) in clipboard history", severity="information")
+        except subprocess.TimeoutExpired:
+            self._wd_log("Clipboard history scan timed out.")
+        except Exception as e:
+            self._wd_log(f"Clipboard history scan error: {e}")
 
     def _wd_log(self, msg: str) -> None:
         ts = datetime.now().strftime("%H:%M:%S")
