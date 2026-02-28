@@ -557,11 +557,11 @@ class Archivist(Screen):
         indicator = self.query_one("#scroll-indicator")
         if self.auto_scroll:
             indicator.update("[ ↓ LIVE ]")
-            indicator.styles.color = "bright_cyan"
+            indicator.styles.color = "ansi_bright_cyan"
             indicator.styles.text_style = "bold"
         else:
             indicator.update("[ PAUSED ]")
-            indicator.styles.color = "grey50"
+            indicator.styles.color = "ansi_default"
             indicator.styles.text_style = "none"
 
     def save_checkpoint(self) -> None:
