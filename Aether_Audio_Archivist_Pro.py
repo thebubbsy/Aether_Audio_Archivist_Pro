@@ -473,7 +473,7 @@ class WatchdogScreen(Screen):
 
     def _scan_clipboard_history(self) -> None:
         """Scan Windows clipboard history for Spotify URLs copied before launch."""
-        PS_SCRIPT = r'''
+        ps_script = r'''
 Add-Type -AssemblyName System.Runtime.WindowsRuntime
 $asTaskMethods = [System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object {
     $_.Name -eq 'AsTask' -and $_.GetParameters().Count -eq 1 -and
@@ -498,17 +498,24 @@ try {
         } catch { }
     }
 } catch {
-    Write-Output "HISTORY_UNAVAILABLE"
+    Write-Error "HISTORY_UNAVAILABLE: $_"
 }
 '''
+        script_path = Path(os.environ.get("TEMP", ".")) / "_aether_clip_hist.ps1"
         try:
+            script_path.write_text(ps_script, encoding="utf-8")
             result = subprocess.run(
-                ["powershell", "-NoProfile", "-Command", PS_SCRIPT],
-                capture_output=True, text=True, timeout=10
+                ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script_path)],
+                capture_output=True, text=True, timeout=15
             )
             output = (result.stdout or "").strip()
-            if not output or output == "HISTORY_UNAVAILABLE":
-                self._wd_log("Clipboard history unavailable (enable via Win+V settings).")
+            stderr = (result.stderr or "").strip()
+
+            if not output:
+                if stderr:
+                    self._wd_log(f"Clipboard history: {stderr[:100]}")
+                else:
+                    self._wd_log("No Spotify URLs found in clipboard history.")
                 return
 
             table = self.query_one("#wd-table", DataTable)
@@ -537,6 +544,9 @@ try {
             self._wd_log("Clipboard history scan timed out.")
         except Exception as e:
             self._wd_log(f"Clipboard history scan error: {e}")
+        finally:
+            try: script_path.unlink(missing_ok=True)
+            except: pass
 
     def _wd_log(self, msg: str) -> None:
         ts = datetime.now().strftime("%H:%M:%S")
