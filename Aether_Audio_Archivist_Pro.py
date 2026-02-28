@@ -926,7 +926,7 @@ class Archivist(Screen):
             await asyncio.to_thread(os.startfile, str(self.target_dir))
         except:
             pass
-        self.app.push_screen(StatsScreen(self.stats, self.track_times, self.track_sizes, ingest_dur, self.harvest_dur))
+        self.app.push_screen(StatsScreen(self.stats, self.track_times, self.track_sizes, ingest_dur, self.harvest_dur, self.tracks))
 
     def on_track_update(self, message: TrackUpdate) -> None:
         table = self.query_one(DataTable)
@@ -1122,55 +1122,126 @@ class ResolveMatchScreen(Screen):
 
 class StatsScreen(Screen):
     """The Mission Summary Vanguard."""
-    def __init__(self, stats: dict, track_times: dict = None, track_sizes: dict = None, ingest_dur: float = 0, harvest_dur: float = 0):
+    def __init__(self, stats: dict, track_times: dict = None, track_sizes: dict = None,
+                 ingest_dur: float = 0, harvest_dur: float = 0, tracks: list = None):
         super().__init__()
         self.stats = stats
         self.track_times = track_times or {}
         self.track_sizes = track_sizes or {}
         self.ingest_dur = ingest_dur
         self.harvest_dur = harvest_dur
+        self.tracks = tracks or []
+
+    def _fmt_time(self, seconds: float) -> str:
+        """Format seconds into human-readable duration."""
+        if seconds < 60:
+            return f"{seconds:.1f}s"
+        m, s = divmod(int(seconds), 60)
+        if m < 60:
+            return f"{m}m {s}s"
+        h, m = divmod(m, 60)
+        return f"{h}h {m}m {s}s"
+
+    def _track_name(self, idx: int) -> str:
+        """Get display name for a track by index."""
+        if idx < len(self.tracks):
+            t = self.tracks[idx]
+            return f"{t.get('artist', '?')} - {t.get('title', '?')}"
+        return f"Track #{idx}"
 
     def compose(self) -> ComposeResult:
         total = self.stats["total"]
         complete = self.stats["complete"]
         no_match = self.stats["no_match"]
         failed = self.stats["failed"]
-        
+        success_rate = (complete / max(total, 1)) * 100
+
+        # ── Time Metrics ──
         combined_time = self.harvest_dur + self.ingest_dur
-        avg_time = combined_time / max(complete, 1)
-        largest_size = max(self.track_sizes.values()) if self.track_sizes else 0
-        largest_mb = largest_size / (1024 * 1024)
-        
-        # Format logic-only time (Harvest + Ingest, excluding user idle)
-        logic_time_str = f"{int(combined_time // 60)}m {int(combined_time % 60)}s"
-        avg_time_str = f"{int(avg_time // 60)}m {int(avg_time % 60)}s" if avg_time > 0 else "0s"
-        
+        avg_time = self.ingest_dur / max(complete, 1)
+        times_list = sorted(self.track_times.values()) if self.track_times else []
+        median_time = times_list[len(times_list) // 2] if times_list else 0
+        fastest_time = min(times_list) if times_list else 0
+        slowest_time = max(times_list) if times_list else 0
+        fastest_idx = min(self.track_times, key=self.track_times.get) if self.track_times else None
+        slowest_idx = max(self.track_times, key=self.track_times.get) if self.track_times else None
+
+        # ── Size Metrics ──
         total_size = sum(self.track_sizes.values())
         total_mb = total_size / (1024 * 1024)
+        total_gb = total_size / (1024 * 1024 * 1024)
         avg_size = total_size / max(complete, 1)
         avg_mb = avg_size / (1024 * 1024)
-        
-        yield Container(
-            Static("==================================================", id="stats-line-1"),
-            Static("         INGESTION MISSION REPORT: COMPLETE       ", id="stats-line-2"),
-            Static("==================================================", id="stats-line-3"),
-            Label(f"TOTAL VECTORS TARGETED: {total}"),
-            Label(f"SUCCESSFULLY ARCHIVED:  [bold green]{complete}[/]"),
-            Label(f"NO MATCH FOUND:         [bold yellow]{no_match}[/]"),
-            Label(f"SYSTEM FAILURES:        [bold red]{failed}[/]"),
-            Static("", id="spacer-1"),
-            Label(f"HARVEST DURATION:      [bold yellow]{self.harvest_dur:.1f}s[/]"),
-            Label(f"INGESTION LOGIC:       [bold cyan]{self.ingest_dur:.1f}s[/]"),
-            Label(f"COMBINED EFFICIENCY:   [bold green]{logic_time_str}[/]"),
-            Label(f"AVG TIME PER TRACK:     [bold cyan]{avg_time_str}[/]"),
-            Label(f"TOTAL COLLECTION SIZE: [bold magenta]{total_mb:.2f} MB[/]"),
-            Label(f"AVG TRACK SIZE:        [bold magenta]{avg_mb:.2f} MB[/]"),
-            Label(f"LARGEST TRACK SIZE:     [bold magenta]{largest_mb:.2f} MB[/]"),
-            Static("", id="spacer-2"),
-            Label("[dim]Full report saved to mission_history.json[/]"),
-            Button("ACKNOWLEDGMENTS (BACK TO OPS)", variant="primary", id="close-stats-btn"),
-            id="stats-box"
-        )
+        sizes_list = sorted(self.track_sizes.values()) if self.track_sizes else []
+        smallest_size = min(sizes_list) if sizes_list else 0
+        largest_size = max(sizes_list) if sizes_list else 0
+        largest_idx = max(self.track_sizes, key=self.track_sizes.get) if self.track_sizes else None
+        smallest_idx = min(self.track_sizes, key=self.track_sizes.get) if self.track_sizes else None
+        median_size = sizes_list[len(sizes_list) // 2] if sizes_list else 0
+
+        # ── Throughput ──
+        throughput_rate = (complete / max(self.ingest_dur, 1)) * 60  # tracks/min
+        data_rate = (total_size / max(self.ingest_dur, 1)) / 1024   # KB/s
+
+        # ── Ratio Bar ──
+        ratio_bar = _make_ratio_bar(complete, no_match, failed, total, width=44)
+
+        # ── Build Labels ──
+        labels = []
+
+        # Header
+        labels.append(Static("=" * 56, id="stats-line-1"))
+        labels.append(Static("       INGESTION MISSION REPORT: COMPLETE          ", id="stats-line-2"))
+        labels.append(Static("=" * 56, id="stats-line-3"))
+
+        # Outcome Summary
+        labels.append(Label(f"TOTAL VECTORS TARGETED:   [bold]{total}[/]"))
+        labels.append(Label(f"SUCCESSFULLY ARCHIVED:    [bold green]{complete}[/]  ({success_rate:.1f}%)"))
+        labels.append(Label(f"NO MATCH FOUND:           [bold yellow]{no_match}[/]"))
+        labels.append(Label(f"SYSTEM FAILURES:          [bold red]{failed}[/]"))
+        labels.append(Static("", id="spacer-1"))
+
+        # Ratio Bar
+        labels.append(Label(Text.assemble(
+            ("MISSION RATIO:  ", "bold"),
+            ratio_bar,
+        )))
+        labels.append(Static("", id="spacer-1b"))
+
+        # Time Breakdown
+        labels.append(Static("── TEMPORAL ANALYSIS ──────────────────────────────"))
+        labels.append(Label(f"HARVEST (SCRAPE):          [bold yellow]{self._fmt_time(self.harvest_dur)}[/]"))
+        labels.append(Label(f"INGESTION (DOWNLOAD):      [bold cyan]{self._fmt_time(self.ingest_dur)}[/]"))
+        labels.append(Label(f"TOTAL MISSION WALL CLOCK:  [bold green]{self._fmt_time(combined_time)}[/]"))
+        labels.append(Label(f"AVG TIME PER TRACK:        [bold cyan]{self._fmt_time(avg_time)}[/]"))
+        labels.append(Label(f"MEDIAN TIME PER TRACK:     [bold cyan]{self._fmt_time(median_time)}[/]"))
+        labels.append(Label(f"THROUGHPUT:                [bold green]{throughput_rate:.1f} tracks/min[/]"))
+
+        if fastest_idx is not None:
+            labels.append(Label(f"FASTEST TRACK:             [bold green]{self._fmt_time(fastest_time)}[/]  {self._track_name(fastest_idx)[:35]}"))
+        if slowest_idx is not None:
+            labels.append(Label(f"SLOWEST TRACK:             [bold red]{self._fmt_time(slowest_time)}[/]  {self._track_name(slowest_idx)[:35]}"))
+
+        labels.append(Static("", id="spacer-2"))
+
+        # Size Breakdown
+        labels.append(Static("── STORAGE ANALYSIS ──────────────────────────────"))
+        size_display = f"{total_gb:.2f} GB" if total_gb >= 1.0 else f"{total_mb:.2f} MB"
+        labels.append(Label(f"TOTAL COLLECTION SIZE:     [bold magenta]{size_display}[/]"))
+        labels.append(Label(f"AVG TRACK SIZE:            [bold magenta]{avg_mb:.2f} MB[/]"))
+        labels.append(Label(f"MEDIAN TRACK SIZE:         [bold magenta]{median_size / (1024*1024):.2f} MB[/]"))
+        labels.append(Label(f"DATA THROUGHPUT:           [bold magenta]{data_rate:.1f} KB/s[/]"))
+
+        if largest_idx is not None:
+            labels.append(Label(f"LARGEST TRACK:             [bold magenta]{largest_size / (1024*1024):.2f} MB[/]  {self._track_name(largest_idx)[:35]}"))
+        if smallest_idx is not None:
+            labels.append(Label(f"SMALLEST TRACK:            [bold magenta]{smallest_size / (1024*1024):.2f} MB[/]  {self._track_name(smallest_idx)[:35]}"))
+
+        labels.append(Static("", id="spacer-3"))
+        labels.append(Label("[dim]Full report saved to mission_history.json[/]"))
+        labels.append(Button("ACKNOWLEDGMENTS (BACK TO OPS)", variant="primary", id="close-stats-btn"))
+
+        yield Container(*labels, id="stats-box")
 
     @on(Button.Pressed, "#close-stats-btn")
     def close_stats(self) -> None:
@@ -1273,10 +1344,10 @@ class AetherApp(App):
     #action-bar {
         dock: bottom;
         height: 3;
-        background: transparent;
+        background: $surface;
         align: right middle;
         padding-right: 2;
-        margin-bottom: 2;
+        border-top: solid $dim;
     }
 
     #harvest-timer, #ingest-timer, #total-size-label, #rate-label {
@@ -1333,14 +1404,16 @@ class AetherApp(App):
     #stats-box {
         align: center middle;
         height: auto;
-        width: 60;
+        width: 70;
+        max-height: 90%;
         border: thick $accent;
         padding: 1 3;
         background: $bg;
+        overflow-y: auto;
     }
 
     #stats-box Label {
-        margin-top: 1;
+        margin-top: 0;
         width: 100%;
     }
 
