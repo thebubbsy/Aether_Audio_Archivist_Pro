@@ -4321,5 +4321,3801 @@
         "size_bytes": 0
       }
     ]
+  },
+  {
+    "timestamp": "2026-02-28T06:44:49.186517",
+    "playlist_id": "426b680a",
+    "playlist_url": "https://open.spotify.com/playlist/0dwmN2O4EpSxQwmRH1zaes",
+    "library": "Aether_Archive11112221121212",
+    "engine": "gpu",
+    "total_time": 73.36,
+    "avg_time_per_song": 73.36,
+    "stats": {
+      "total": 119,
+      "complete": 0,
+      "no_match": 0,
+      "failed": 0
+    },
+    "largest_song": null,
+    "largest_size_bytes": 0,
+    "tracks": [
+      {
+        "title": "Ain't No Mountain High Enough",
+        "artist": "Marvin Gaye, Tammi Terrell",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Sexual Healing",
+        "artist": "Marvin Gaye",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "I Heard It Through The Grapevine",
+        "artist": "Marvin Gaye",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "September",
+        "artist": "Earth, Wind & Fire",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Billie Jean",
+        "artist": "Michael Jackson",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "The Way You Make Me Feel",
+        "artist": "Michael Jackson",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Rock With You",
+        "artist": "Michael Jackson",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "The Girl Is Mine (with Paul McCartney)",
+        "artist": "Michael Jackson, Paul McCartney",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Remember the Time",
+        "artist": "Michael Jackson",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "You're the Voice",
+        "artist": "John Farnham",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Rebel Rebel - 2016 Remaster",
+        "artist": "David Bowie",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Don't Stop Me Now - Remastered 2011",
+        "artist": "Queen",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "You're My Best Friend - Remastered 2011",
+        "artist": "Queen",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "I Want To Break Free",
+        "artist": "Queen",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Crazy Little Thing Called Love",
+        "artist": "Queen",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Killer Queen",
+        "artist": "Queen",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Fat Bottomed Girls - Single Version / Remastered 2011",
+        "artist": "Queen",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Radio Ga Ga - Remastered 2011",
+        "artist": "Queen",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Give A Little Bit",
+        "artist": "Supertramp",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "The Logical Song - Remastered 2010",
+        "artist": "Supertramp",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Breakfast In America - Remastered 2010",
+        "artist": "Supertramp",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Take The Long Way Home - Remastered 2010",
+        "artist": "Supertramp",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Bloody Well Right",
+        "artist": "Supertramp",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "No More Mr. Nice Guy",
+        "artist": "Alice Cooper",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "School's Out",
+        "artist": "Alice Cooper",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Eagle Rock - 2011 Remaster",
+        "artist": "Daddy Cool",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Come Back Again - 2011 Remaster",
+        "artist": "Daddy Cool",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Daddy Cool - 2011 Remaster",
+        "artist": "Daddy Cool",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Hotel California - 2013 Remaster",
+        "artist": "Eagles",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Victim of Love - 2013 Remaster",
+        "artist": "Eagles",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "A Horse with No Name",
+        "artist": "America, George Martin",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Ventura Highway",
+        "artist": "America, George Martin",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Sister Golden Hair",
+        "artist": "America",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "You Can Do Magic",
+        "artist": "America",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "I Need You",
+        "artist": "America, George Martin",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Dreams - 2004 Remaster",
+        "artist": "Fleetwood Mac",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "The Chain - 2004 Remaster",
+        "artist": "Fleetwood Mac",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Go Your Own Way - 2004 Remaster",
+        "artist": "Fleetwood Mac",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Never Going Back Again - 2004 Remaster",
+        "artist": "Fleetwood Mac",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "I Don't Want to Know - 2004 Remaster",
+        "artist": "Fleetwood Mac",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Fortunate Son",
+        "artist": "Creedence Clearwater Revival",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Bad Moon Rising",
+        "artist": "Creedence Clearwater Revival",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Up Around The Bend",
+        "artist": "Creedence Clearwater Revival",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Down On The Corner",
+        "artist": "Creedence Clearwater Revival",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Band On The Run - 2010 Remaster",
+        "artist": "Paul McCartney, Wings",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Here Comes The Sun - Remastered 2009",
+        "artist": "The Beatles",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Wild World",
+        "artist": "Yusuf / Cat Stevens",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Hit the Road Jack (Remastered)",
+        "artist": "Ray Charles",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Superstition - Single Version",
+        "artist": "Stevie Wonder",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "For Once In My Life",
+        "artist": "Stevie Wonder",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Sultans Of Swing",
+        "artist": "Dire Straits",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Walk Of Life",
+        "artist": "Dire Straits",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Money For Nothing",
+        "artist": "Dire Straits",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Roxanne",
+        "artist": "The Police",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Every Breath You Take",
+        "artist": "The Police",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Don't Stand So Close To Me",
+        "artist": "The Police",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Every Little Thing She Does Is Magic",
+        "artist": "The Police",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Just What I Needed",
+        "artist": "The Cars",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "My Best Friend's Girl",
+        "artist": "The Cars",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "You Might Think",
+        "artist": "The Cars",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Down Under",
+        "artist": "Men At Work",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Who Can It Be Now?",
+        "artist": "Men At Work",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Overkill",
+        "artist": "Men At Work",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Africa",
+        "artist": "TOTO",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Wake Me Up Before You Go-Go",
+        "artist": "Wham!",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Never Gonna Give You Up",
+        "artist": "Rick Astley",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Take on Me",
+        "artist": "a-ha",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Don't Stop Believin'",
+        "artist": "Journey",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Any Way You Want It",
+        "artist": "Journey",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Rocket Man (I Think It's Going To Be A Long, Long Time)",
+        "artist": "Elton John",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "I'm Still Standing",
+        "artist": "Elton John",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Uptown Girl",
+        "artist": "Billy Joel",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Piano Man",
+        "artist": "Billy Joel",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "We Didn't Start the Fire",
+        "artist": "Billy Joel",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Mr. Blue Sky",
+        "artist": "Electric Light Orchestra",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Wouldn't It Be Nice",
+        "artist": "The Beach Boys",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Good Vibrations - Remastered 2001",
+        "artist": "The Beach Boys",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "I Swear",
+        "artist": "All-4-One",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Brown Eyed Girl",
+        "artist": "Van Morrison",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "American Pie",
+        "artist": "Don McLean",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Sweet Home Alabama",
+        "artist": "Lynyrd Skynyrd",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Jet Airliner",
+        "artist": "Steve Miller Band",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Ain't No Sunshine",
+        "artist": "Bill Withers",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Thriller",
+        "artist": "Michael Jackson",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "The Rose",
+        "artist": "Westlife",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "My Way",
+        "artist": "Frank Sinatra",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Come Fly With Me - Remastered 1998",
+        "artist": "Frank Sinatra",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Dancing In the Dark",
+        "artist": "Bruce Springsteen",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Everybody Wants To Rule The World",
+        "artist": "Tears For Fears",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Under Pressure - Remastered 2011",
+        "artist": "Queen, David Bowie",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Don't Go Breaking My Heart",
+        "artist": "Elton John, Kiki Dee",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Start Me Up - Remastered 2009",
+        "artist": "The Rolling Stones",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Don't Bring Me Down",
+        "artist": "Electric Light Orchestra",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "The Power Of Love",
+        "artist": "Huey Lewis & The News",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Don't Stop - 2004 Remaster",
+        "artist": "Fleetwood Mac",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Livin' Thing",
+        "artist": "Electric Light Orchestra",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Free Fallin'",
+        "artist": "Tom Petty",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Stuck In The Middle With You",
+        "artist": "Stealers Wheel",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Somebody To Love - Remastered 2011",
+        "artist": "Queen",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "The Joker",
+        "artist": "Steve Miller Band",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Maneater",
+        "artist": "Daryl Hall & John Oates",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Abracadabra",
+        "artist": "Steve Miller Band",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Heat Of The Moment",
+        "artist": "Asia",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Poison",
+        "artist": "Alice Cooper",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "More Than a Feeling",
+        "artist": "Boston",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "You Make My Dreams (Come True)",
+        "artist": "Daryl Hall & John Oates",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Tiny Dancer",
+        "artist": "Elton John",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Spirit In The Sky - Deluxe Edition",
+        "artist": "Norman Greenbaum",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Message In A Bottle",
+        "artist": "The Police",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "My Life",
+        "artist": "Billy Joel",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Escape (The Pina Colada Song)",
+        "artist": "Rupert Holmes",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Baker Street",
+        "artist": "Gerry Rafferty",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Come On Eileen",
+        "artist": "Dexys Midnight Runners",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Heart Of Glass",
+        "artist": "Blondie",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Baba O'Riley - Remastered 2022",
+        "artist": "The Who",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Hold the Line",
+        "artist": "TOTO",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "I Still Haven't Found What I'm Looking For - Remastered 2007",
+        "artist": "U2",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Got My Mind Set on You",
+        "artist": "George Harrison",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Everywhere - 2017 Remaster",
+        "artist": "Fleetwood Mac",
+        "status": "ARCHIVING",
+        "time_seconds": 0,
+        "size_bytes": 0
+      }
+    ]
+  },
+  {
+    "timestamp": "2026-02-28T06:49:28.659485",
+    "playlist_id": "426b680a",
+    "playlist_url": "https://open.spotify.com/playlist/0dwmN2O4EpSxQwmRH1zaes",
+    "library": "Aether_Archivesdsdsd",
+    "engine": "gpu",
+    "total_time": 62.77,
+    "avg_time_per_song": 62.77,
+    "stats": {
+      "total": 119,
+      "complete": 0,
+      "no_match": 0,
+      "failed": 119
+    },
+    "largest_song": null,
+    "largest_size_bytes": 0,
+    "tracks": [
+      {
+        "title": "Ain't No Mountain High Enough",
+        "artist": "Marvin Gaye, Tammi Terrell",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Sexual Healing",
+        "artist": "Marvin Gaye",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "I Heard It Through The Grapevine",
+        "artist": "Marvin Gaye",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "September",
+        "artist": "Earth, Wind & Fire",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Billie Jean",
+        "artist": "Michael Jackson",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "The Way You Make Me Feel",
+        "artist": "Michael Jackson",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Rock With You",
+        "artist": "Michael Jackson",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "The Girl Is Mine (with Paul McCartney)",
+        "artist": "Michael Jackson, Paul McCartney",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Remember the Time",
+        "artist": "Michael Jackson",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "You're the Voice",
+        "artist": "John Farnham",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Rebel Rebel - 2016 Remaster",
+        "artist": "David Bowie",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Don't Stop Me Now - Remastered 2011",
+        "artist": "Queen",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "You're My Best Friend - Remastered 2011",
+        "artist": "Queen",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "I Want To Break Free",
+        "artist": "Queen",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Crazy Little Thing Called Love",
+        "artist": "Queen",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Killer Queen",
+        "artist": "Queen",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Fat Bottomed Girls - Single Version / Remastered 2011",
+        "artist": "Queen",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Radio Ga Ga - Remastered 2011",
+        "artist": "Queen",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Give A Little Bit",
+        "artist": "Supertramp",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "The Logical Song - Remastered 2010",
+        "artist": "Supertramp",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Breakfast In America - Remastered 2010",
+        "artist": "Supertramp",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Take The Long Way Home - Remastered 2010",
+        "artist": "Supertramp",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Bloody Well Right",
+        "artist": "Supertramp",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "No More Mr. Nice Guy",
+        "artist": "Alice Cooper",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "School's Out",
+        "artist": "Alice Cooper",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Eagle Rock - 2011 Remaster",
+        "artist": "Daddy Cool",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Come Back Again - 2011 Remaster",
+        "artist": "Daddy Cool",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Daddy Cool - 2011 Remaster",
+        "artist": "Daddy Cool",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Hotel California - 2013 Remaster",
+        "artist": "Eagles",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Victim of Love - 2013 Remaster",
+        "artist": "Eagles",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "A Horse with No Name",
+        "artist": "America, George Martin",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Ventura Highway",
+        "artist": "America, George Martin",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Sister Golden Hair",
+        "artist": "America",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "You Can Do Magic",
+        "artist": "America",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "I Need You",
+        "artist": "America, George Martin",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Dreams - 2004 Remaster",
+        "artist": "Fleetwood Mac",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "The Chain - 2004 Remaster",
+        "artist": "Fleetwood Mac",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Go Your Own Way - 2004 Remaster",
+        "artist": "Fleetwood Mac",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Never Going Back Again - 2004 Remaster",
+        "artist": "Fleetwood Mac",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "I Don't Want to Know - 2004 Remaster",
+        "artist": "Fleetwood Mac",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Fortunate Son",
+        "artist": "Creedence Clearwater Revival",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Bad Moon Rising",
+        "artist": "Creedence Clearwater Revival",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Up Around The Bend",
+        "artist": "Creedence Clearwater Revival",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Down On The Corner",
+        "artist": "Creedence Clearwater Revival",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Band On The Run - 2010 Remaster",
+        "artist": "Paul McCartney, Wings",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Here Comes The Sun - Remastered 2009",
+        "artist": "The Beatles",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Wild World",
+        "artist": "Yusuf / Cat Stevens",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Hit the Road Jack (Remastered)",
+        "artist": "Ray Charles",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Superstition - Single Version",
+        "artist": "Stevie Wonder",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "For Once In My Life",
+        "artist": "Stevie Wonder",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Sultans Of Swing",
+        "artist": "Dire Straits",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Walk Of Life",
+        "artist": "Dire Straits",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Money For Nothing",
+        "artist": "Dire Straits",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Roxanne",
+        "artist": "The Police",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Every Breath You Take",
+        "artist": "The Police",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Don't Stand So Close To Me",
+        "artist": "The Police",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Every Little Thing She Does Is Magic",
+        "artist": "The Police",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Just What I Needed",
+        "artist": "The Cars",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "My Best Friend's Girl",
+        "artist": "The Cars",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "You Might Think",
+        "artist": "The Cars",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Down Under",
+        "artist": "Men At Work",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Who Can It Be Now?",
+        "artist": "Men At Work",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Overkill",
+        "artist": "Men At Work",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Africa",
+        "artist": "TOTO",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Wake Me Up Before You Go-Go",
+        "artist": "Wham!",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Never Gonna Give You Up",
+        "artist": "Rick Astley",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Take on Me",
+        "artist": "a-ha",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Don't Stop Believin'",
+        "artist": "Journey",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Any Way You Want It",
+        "artist": "Journey",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Rocket Man (I Think It's Going To Be A Long, Long Time)",
+        "artist": "Elton John",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "I'm Still Standing",
+        "artist": "Elton John",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Uptown Girl",
+        "artist": "Billy Joel",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Piano Man",
+        "artist": "Billy Joel",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "We Didn't Start the Fire",
+        "artist": "Billy Joel",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Mr. Blue Sky",
+        "artist": "Electric Light Orchestra",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Wouldn't It Be Nice",
+        "artist": "The Beach Boys",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Good Vibrations - Remastered 2001",
+        "artist": "The Beach Boys",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "I Swear",
+        "artist": "All-4-One",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Brown Eyed Girl",
+        "artist": "Van Morrison",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "American Pie",
+        "artist": "Don McLean",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Sweet Home Alabama",
+        "artist": "Lynyrd Skynyrd",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Jet Airliner",
+        "artist": "Steve Miller Band",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Ain't No Sunshine",
+        "artist": "Bill Withers",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Thriller",
+        "artist": "Michael Jackson",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "The Rose",
+        "artist": "Westlife",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "My Way",
+        "artist": "Frank Sinatra",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Come Fly With Me - Remastered 1998",
+        "artist": "Frank Sinatra",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Dancing In the Dark",
+        "artist": "Bruce Springsteen",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Everybody Wants To Rule The World",
+        "artist": "Tears For Fears",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Under Pressure - Remastered 2011",
+        "artist": "Queen, David Bowie",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Don't Go Breaking My Heart",
+        "artist": "Elton John, Kiki Dee",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Start Me Up - Remastered 2009",
+        "artist": "The Rolling Stones",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Don't Bring Me Down",
+        "artist": "Electric Light Orchestra",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "The Power Of Love",
+        "artist": "Huey Lewis & The News",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Don't Stop - 2004 Remaster",
+        "artist": "Fleetwood Mac",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Livin' Thing",
+        "artist": "Electric Light Orchestra",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Free Fallin'",
+        "artist": "Tom Petty",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Stuck In The Middle With You",
+        "artist": "Stealers Wheel",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Somebody To Love - Remastered 2011",
+        "artist": "Queen",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "The Joker",
+        "artist": "Steve Miller Band",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Maneater",
+        "artist": "Daryl Hall & John Oates",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Abracadabra",
+        "artist": "Steve Miller Band",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Heat Of The Moment",
+        "artist": "Asia",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Poison",
+        "artist": "Alice Cooper",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "More Than a Feeling",
+        "artist": "Boston",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "You Make My Dreams (Come True)",
+        "artist": "Daryl Hall & John Oates",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Tiny Dancer",
+        "artist": "Elton John",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Spirit In The Sky - Deluxe Edition",
+        "artist": "Norman Greenbaum",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Message In A Bottle",
+        "artist": "The Police",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "My Life",
+        "artist": "Billy Joel",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Escape (The Pina Colada Song)",
+        "artist": "Rupert Holmes",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Baker Street",
+        "artist": "Gerry Rafferty",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Come On Eileen",
+        "artist": "Dexys Midnight Runners",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Heart Of Glass",
+        "artist": "Blondie",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Baba O'Riley - Remastered 2022",
+        "artist": "The Who",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Hold the Line",
+        "artist": "TOTO",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "I Still Haven't Found What I'm Looking For - Remastered 2007",
+        "artist": "U2",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Got My Mind Set on You",
+        "artist": "George Harrison",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Everywhere - 2017 Remaster",
+        "artist": "Fleetwood Mac",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      }
+    ]
+  },
+  {
+    "timestamp": "2026-02-28T06:58:53.542596",
+    "playlist_id": "426b680a",
+    "playlist_url": "https://open.spotify.com/playlist/0dwmN2O4EpSxQwmRH1zaes",
+    "library": "Aether_Archivedfgdfgdfg",
+    "engine": "gpu",
+    "harvest_duration_seconds": 16.76,
+    "total_time_seconds": 77.03,
+    "avg_time_per_song": 77.03,
+    "stats": {
+      "total": 119,
+      "complete": 0,
+      "no_match": 0,
+      "failed": 119
+    },
+    "largest_song": null,
+    "largest_size_bytes": 0,
+    "tracks": [
+      {
+        "title": "Ain't No Mountain High Enough",
+        "artist": "Marvin Gaye, Tammi Terrell",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Sexual Healing",
+        "artist": "Marvin Gaye",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "I Heard It Through The Grapevine",
+        "artist": "Marvin Gaye",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "September",
+        "artist": "Earth, Wind & Fire",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Billie Jean",
+        "artist": "Michael Jackson",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "The Way You Make Me Feel",
+        "artist": "Michael Jackson",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Rock With You",
+        "artist": "Michael Jackson",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "The Girl Is Mine (with Paul McCartney)",
+        "artist": "Michael Jackson, Paul McCartney",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Remember the Time",
+        "artist": "Michael Jackson",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "You're the Voice",
+        "artist": "John Farnham",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Rebel Rebel - 2016 Remaster",
+        "artist": "David Bowie",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Don't Stop Me Now - Remastered 2011",
+        "artist": "Queen",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "You're My Best Friend - Remastered 2011",
+        "artist": "Queen",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "I Want To Break Free",
+        "artist": "Queen",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Crazy Little Thing Called Love",
+        "artist": "Queen",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Killer Queen",
+        "artist": "Queen",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Fat Bottomed Girls - Single Version / Remastered 2011",
+        "artist": "Queen",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Radio Ga Ga - Remastered 2011",
+        "artist": "Queen",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Give A Little Bit",
+        "artist": "Supertramp",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "The Logical Song - Remastered 2010",
+        "artist": "Supertramp",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Breakfast In America - Remastered 2010",
+        "artist": "Supertramp",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Take The Long Way Home - Remastered 2010",
+        "artist": "Supertramp",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Bloody Well Right",
+        "artist": "Supertramp",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "No More Mr. Nice Guy",
+        "artist": "Alice Cooper",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "School's Out",
+        "artist": "Alice Cooper",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Eagle Rock - 2011 Remaster",
+        "artist": "Daddy Cool",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Come Back Again - 2011 Remaster",
+        "artist": "Daddy Cool",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Daddy Cool - 2011 Remaster",
+        "artist": "Daddy Cool",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Hotel California - 2013 Remaster",
+        "artist": "Eagles",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Victim of Love - 2013 Remaster",
+        "artist": "Eagles",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "A Horse with No Name",
+        "artist": "America, George Martin",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Ventura Highway",
+        "artist": "America, George Martin",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Sister Golden Hair",
+        "artist": "America",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "You Can Do Magic",
+        "artist": "America",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "I Need You",
+        "artist": "America, George Martin",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Dreams - 2004 Remaster",
+        "artist": "Fleetwood Mac",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "The Chain - 2004 Remaster",
+        "artist": "Fleetwood Mac",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Go Your Own Way - 2004 Remaster",
+        "artist": "Fleetwood Mac",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Never Going Back Again - 2004 Remaster",
+        "artist": "Fleetwood Mac",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "I Don't Want to Know - 2004 Remaster",
+        "artist": "Fleetwood Mac",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Fortunate Son",
+        "artist": "Creedence Clearwater Revival",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Bad Moon Rising",
+        "artist": "Creedence Clearwater Revival",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Up Around The Bend",
+        "artist": "Creedence Clearwater Revival",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Down On The Corner",
+        "artist": "Creedence Clearwater Revival",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Band On The Run - 2010 Remaster",
+        "artist": "Paul McCartney, Wings",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Here Comes The Sun - Remastered 2009",
+        "artist": "The Beatles",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Wild World",
+        "artist": "Yusuf / Cat Stevens",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Hit the Road Jack (Remastered)",
+        "artist": "Ray Charles",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Superstition - Single Version",
+        "artist": "Stevie Wonder",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "For Once In My Life",
+        "artist": "Stevie Wonder",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Sultans Of Swing",
+        "artist": "Dire Straits",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Walk Of Life",
+        "artist": "Dire Straits",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Money For Nothing",
+        "artist": "Dire Straits",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Roxanne",
+        "artist": "The Police",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Every Breath You Take",
+        "artist": "The Police",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Don't Stand So Close To Me",
+        "artist": "The Police",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Every Little Thing She Does Is Magic",
+        "artist": "The Police",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Just What I Needed",
+        "artist": "The Cars",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "My Best Friend's Girl",
+        "artist": "The Cars",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "You Might Think",
+        "artist": "The Cars",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Down Under",
+        "artist": "Men At Work",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Who Can It Be Now?",
+        "artist": "Men At Work",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Overkill",
+        "artist": "Men At Work",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Africa",
+        "artist": "TOTO",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Wake Me Up Before You Go-Go",
+        "artist": "Wham!",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Never Gonna Give You Up",
+        "artist": "Rick Astley",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Take on Me",
+        "artist": "a-ha",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Don't Stop Believin'",
+        "artist": "Journey",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Any Way You Want It",
+        "artist": "Journey",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Rocket Man (I Think It's Going To Be A Long, Long Time)",
+        "artist": "Elton John",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "I'm Still Standing",
+        "artist": "Elton John",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Uptown Girl",
+        "artist": "Billy Joel",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Piano Man",
+        "artist": "Billy Joel",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "We Didn't Start the Fire",
+        "artist": "Billy Joel",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Mr. Blue Sky",
+        "artist": "Electric Light Orchestra",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Wouldn't It Be Nice",
+        "artist": "The Beach Boys",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Good Vibrations - Remastered 2001",
+        "artist": "The Beach Boys",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "I Swear",
+        "artist": "All-4-One",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Brown Eyed Girl",
+        "artist": "Van Morrison",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "American Pie",
+        "artist": "Don McLean",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Sweet Home Alabama",
+        "artist": "Lynyrd Skynyrd",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Jet Airliner",
+        "artist": "Steve Miller Band",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Ain't No Sunshine",
+        "artist": "Bill Withers",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Thriller",
+        "artist": "Michael Jackson",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "The Rose",
+        "artist": "Westlife",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "My Way",
+        "artist": "Frank Sinatra",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Come Fly With Me - Remastered 1998",
+        "artist": "Frank Sinatra",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Dancing In the Dark",
+        "artist": "Bruce Springsteen",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Everybody Wants To Rule The World",
+        "artist": "Tears For Fears",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Under Pressure - Remastered 2011",
+        "artist": "Queen, David Bowie",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Don't Go Breaking My Heart",
+        "artist": "Elton John, Kiki Dee",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Start Me Up - Remastered 2009",
+        "artist": "The Rolling Stones",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Don't Bring Me Down",
+        "artist": "Electric Light Orchestra",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "The Power Of Love",
+        "artist": "Huey Lewis & The News",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Don't Stop - 2004 Remaster",
+        "artist": "Fleetwood Mac",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Livin' Thing",
+        "artist": "Electric Light Orchestra",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Free Fallin'",
+        "artist": "Tom Petty",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Stuck In The Middle With You",
+        "artist": "Stealers Wheel",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Somebody To Love - Remastered 2011",
+        "artist": "Queen",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "The Joker",
+        "artist": "Steve Miller Band",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Maneater",
+        "artist": "Daryl Hall & John Oates",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Abracadabra",
+        "artist": "Steve Miller Band",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Heat Of The Moment",
+        "artist": "Asia",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Poison",
+        "artist": "Alice Cooper",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "More Than a Feeling",
+        "artist": "Boston",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "You Make My Dreams (Come True)",
+        "artist": "Daryl Hall & John Oates",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Tiny Dancer",
+        "artist": "Elton John",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Spirit In The Sky - Deluxe Edition",
+        "artist": "Norman Greenbaum",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Message In A Bottle",
+        "artist": "The Police",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "My Life",
+        "artist": "Billy Joel",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Escape (The Pina Colada Song)",
+        "artist": "Rupert Holmes",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Baker Street",
+        "artist": "Gerry Rafferty",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Come On Eileen",
+        "artist": "Dexys Midnight Runners",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Heart Of Glass",
+        "artist": "Blondie",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Baba O'Riley - Remastered 2022",
+        "artist": "The Who",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Hold the Line",
+        "artist": "TOTO",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "I Still Haven't Found What I'm Looking For - Remastered 2007",
+        "artist": "U2",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Got My Mind Set on You",
+        "artist": "George Harrison",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Everywhere - 2017 Remaster",
+        "artist": "Fleetwood Mac",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      }
+    ]
+  },
+  {
+    "timestamp": "2026-02-28T09:55:22.329619",
+    "playlist_id": "602e22a7",
+    "playlist_url": "https://open.spotify.com/playlist/5VwYIrOYiEH3NFGysW3KGK",
+    "library": "Aether_Archive",
+    "engine": "cpu",
+    "harvest_duration_seconds": 15.31,
+    "ingest_duration_seconds": 37.3,
+    "combined_logic_duration": 52.61,
+    "avg_time_per_song": 0.63,
+    "stats": {
+      "total": 83,
+      "complete": 83,
+      "no_match": 0,
+      "failed": 0
+    },
+    "largest_song": "Pictures of You",
+    "largest_size_bytes": 15884155,
+    "tracks": [
+      {
+        "title": "If Today Was Your Last Day",
+        "artist": "Nickelback",
+        "status": "COMPLETE",
+        "time_seconds": 8.043218,
+        "size_bytes": 8103512
+      },
+      {
+        "title": "Someday",
+        "artist": "Nickelback",
+        "status": "COMPLETE",
+        "time_seconds": 7.324412,
+        "size_bytes": 7317445
+      },
+      {
+        "title": "Kryptonite",
+        "artist": "3 Doors Down",
+        "status": "COMPLETE",
+        "time_seconds": 6.978686,
+        "size_bytes": 7277466
+      },
+      {
+        "title": "Lips Of An Angel",
+        "artist": "Hinder",
+        "status": "COMPLETE",
+        "time_seconds": 7.557817,
+        "size_bytes": 7844754
+      },
+      {
+        "title": "Best of You",
+        "artist": "Foo Fighters",
+        "status": "COMPLETE",
+        "time_seconds": 7.3231,
+        "size_bytes": 8210107
+      },
+      {
+        "title": "Photograph",
+        "artist": "Nickelback",
+        "status": "COMPLETE",
+        "time_seconds": 7.633304,
+        "size_bytes": 8786536
+      },
+      {
+        "title": "Unwell - 2007 Remaster",
+        "artist": "Matchbox Twenty",
+        "status": "COMPLETE",
+        "time_seconds": 7.5005,
+        "size_bytes": 7934601
+      },
+      {
+        "title": "Use Somebody",
+        "artist": "Kings of Leon",
+        "status": "COMPLETE",
+        "time_seconds": 6.619075,
+        "size_bytes": 6432573
+      },
+      {
+        "title": "3AM",
+        "artist": "Matchbox Twenty",
+        "status": "COMPLETE",
+        "time_seconds": 7.154156,
+        "size_bytes": 7347974
+      },
+      {
+        "title": "Livin' On A Prayer",
+        "artist": "Bon Jovi",
+        "status": "COMPLETE",
+        "time_seconds": 7.767227,
+        "size_bytes": 8076982
+      },
+      {
+        "title": "Don't Dream It's Over",
+        "artist": "Crowded House",
+        "status": "COMPLETE",
+        "time_seconds": 7.182932,
+        "size_bytes": 7805094
+      },
+      {
+        "title": "What About Me",
+        "artist": "Shannon Noll",
+        "status": "COMPLETE",
+        "time_seconds": 7.430613,
+        "size_bytes": 6349965
+      },
+      {
+        "title": "Sweet Child O' Mine",
+        "artist": "Guns N' Roses",
+        "status": "COMPLETE",
+        "time_seconds": 8.597803,
+        "size_bytes": 10835476
+      },
+      {
+        "title": "Life Is A Highway",
+        "artist": "Tom Cochrane",
+        "status": "COMPLETE",
+        "time_seconds": 8.238709,
+        "size_bytes": 8652145
+      },
+      {
+        "title": "Black Fingernails, Red Wine",
+        "artist": "Eskimo Joe",
+        "status": "COMPLETE",
+        "time_seconds": 7.455958,
+        "size_bytes": 8455473
+      },
+      {
+        "title": "You're the Voice",
+        "artist": "John Farnham",
+        "status": "COMPLETE",
+        "time_seconds": 7.853974,
+        "size_bytes": 8826563
+      },
+      {
+        "title": "20 Good Reasons",
+        "artist": "Thirsty Merc",
+        "status": "COMPLETE",
+        "time_seconds": 7.171503,
+        "size_bytes": 7183151
+      },
+      {
+        "title": "Savin' Me",
+        "artist": "Nickelback",
+        "status": "COMPLETE",
+        "time_seconds": 6.803506,
+        "size_bytes": 7571991
+      },
+      {
+        "title": "You Give Love A Bad Name",
+        "artist": "Bon Jovi",
+        "status": "COMPLETE",
+        "time_seconds": 6.780429,
+        "size_bytes": 7182868
+      },
+      {
+        "title": "How Far We've Come",
+        "artist": "Matchbox Twenty",
+        "status": "COMPLETE",
+        "time_seconds": 6.775429,
+        "size_bytes": 6795149
+      },
+      {
+        "title": "Pictures Of You",
+        "artist": "The Last Goodnight",
+        "status": "COMPLETE",
+        "time_seconds": 4.185433,
+        "size_bytes": 6200141
+      },
+      {
+        "title": "The Boys of Summer",
+        "artist": "The Ataris",
+        "status": "COMPLETE",
+        "time_seconds": 5.078874,
+        "size_bytes": 8526768
+      },
+      {
+        "title": "Lift",
+        "artist": "Shannon Noll",
+        "status": "COMPLETE",
+        "time_seconds": 6.228151,
+        "size_bytes": 6986316
+      },
+      {
+        "title": "When You're Young",
+        "artist": "3 Doors Down",
+        "status": "COMPLETE",
+        "time_seconds": 7.106249,
+        "size_bytes": 8739385
+      },
+      {
+        "title": "Hotel California - 2013 Remaster",
+        "artist": "Eagles",
+        "status": "COMPLETE",
+        "time_seconds": 16.348828,
+        "size_bytes": 13097002
+      },
+      {
+        "title": "Need You Tonight",
+        "artist": "INXS",
+        "status": "COMPLETE",
+        "time_seconds": 7.677954,
+        "size_bytes": 5706952
+      },
+      {
+        "title": "Summer Of '69",
+        "artist": "Bryan Adams",
+        "status": "COMPLETE",
+        "time_seconds": 8.631059,
+        "size_bytes": 7028588
+      },
+      {
+        "title": "I Don't Want To Miss A Thing - From \"Armageddon\" Soundtrack",
+        "artist": "Aerosmith",
+        "status": "COMPLETE",
+        "time_seconds": 12.904742,
+        "size_bytes": 10051576
+      },
+      {
+        "title": "Pictures of You",
+        "artist": "The Cure",
+        "status": "COMPLETE",
+        "time_seconds": 17.124495,
+        "size_bytes": 15884155
+      },
+      {
+        "title": "Wherever You Will Go",
+        "artist": "The Calling",
+        "status": "COMPLETE",
+        "time_seconds": 8.062716,
+        "size_bytes": 6350787
+      },
+      {
+        "title": "Don't Stop Believin'",
+        "artist": "Journey",
+        "status": "COMPLETE",
+        "time_seconds": 5.267822,
+        "size_bytes": 8127263
+      },
+      {
+        "title": "Wicked Game",
+        "artist": "Chris Isaak",
+        "status": "COMPLETE",
+        "time_seconds": 5.834516,
+        "size_bytes": 9545946
+      },
+      {
+        "title": "Iris",
+        "artist": "The Goo Goo Dolls",
+        "status": "COMPLETE",
+        "time_seconds": 13.266768,
+        "size_bytes": 9515729
+      },
+      {
+        "title": "With Or Without You",
+        "artist": "U2",
+        "status": "COMPLETE",
+        "time_seconds": 10.324785,
+        "size_bytes": 8550425
+      },
+      {
+        "title": "Push",
+        "artist": "Matchbox Twenty",
+        "status": "COMPLETE",
+        "time_seconds": 9.306872,
+        "size_bytes": 8177799
+      },
+      {
+        "title": "Superman (It's Not Easy)",
+        "artist": "Five For Fighting",
+        "status": "COMPLETE",
+        "time_seconds": 11.101409,
+        "size_bytes": 7182085
+      },
+      {
+        "title": "The Reason",
+        "artist": "Hoobastank",
+        "status": "COMPLETE",
+        "time_seconds": 11.643522,
+        "size_bytes": 8007616
+      },
+      {
+        "title": "If I Had A Gun\u2026",
+        "artist": "Noel Gallagher's High Flying Birds",
+        "status": "COMPLETE",
+        "time_seconds": 11.96016,
+        "size_bytes": 7212503
+      },
+      {
+        "title": "Hanging By A Moment",
+        "artist": "Lifehouse",
+        "status": "COMPLETE",
+        "time_seconds": 9.687451,
+        "size_bytes": 6645192
+      },
+      {
+        "title": "Pyro",
+        "artist": "Kings of Leon",
+        "status": "COMPLETE",
+        "time_seconds": 11.050523,
+        "size_bytes": 7790629
+      },
+      {
+        "title": "Have You Ever Seen The Rain?",
+        "artist": "Creedence Clearwater Revival",
+        "status": "COMPLETE",
+        "time_seconds": 6.749422,
+        "size_bytes": 5469196
+      },
+      {
+        "title": "Californication",
+        "artist": "Red Hot Chili Peppers",
+        "status": "COMPLETE",
+        "time_seconds": 9.551277,
+        "size_bytes": 10867808
+      },
+      {
+        "title": "Sex on Fire",
+        "artist": "Kings of Leon",
+        "status": "COMPLETE",
+        "time_seconds": 8.492233,
+        "size_bytes": 6865436
+      },
+      {
+        "title": "Come As You Are",
+        "artist": "Nirvana",
+        "status": "COMPLETE",
+        "time_seconds": 7.603862,
+        "size_bytes": 7015482
+      },
+      {
+        "title": "Revelry",
+        "artist": "Kings of Leon",
+        "status": "COMPLETE",
+        "time_seconds": 7.761999,
+        "size_bytes": 6325000
+      },
+      {
+        "title": "Closer",
+        "artist": "Kings of Leon",
+        "status": "COMPLETE",
+        "time_seconds": 7.176209,
+        "size_bytes": 8188791
+      },
+      {
+        "title": "Whatever It Takes",
+        "artist": "Lifehouse",
+        "status": "COMPLETE",
+        "time_seconds": 6.950906,
+        "size_bytes": 6711838
+      },
+      {
+        "title": "If Everyone Cared",
+        "artist": "Nickelback",
+        "status": "COMPLETE",
+        "time_seconds": 6.882313,
+        "size_bytes": 7526639
+      },
+      {
+        "title": "Face Down",
+        "artist": "The Red Jumpsuit Apparatus",
+        "status": "COMPLETE",
+        "time_seconds": 6.453321,
+        "size_bytes": 6486871
+      },
+      {
+        "title": "All Summer Long",
+        "artist": "Kid Rock",
+        "status": "COMPLETE",
+        "time_seconds": 7.125843,
+        "size_bytes": 10336123
+      },
+      {
+        "title": "Here Without You - Acoustic Version",
+        "artist": "3 Doors Down",
+        "status": "COMPLETE",
+        "time_seconds": 8.158951,
+        "size_bytes": 7903699
+      },
+      {
+        "title": "If You Could Only See",
+        "artist": "Tonic",
+        "status": "COMPLETE",
+        "time_seconds": 7.451772,
+        "size_bytes": 8832406
+      },
+      {
+        "title": "Under the Bridge",
+        "artist": "Red Hot Chili Peppers",
+        "status": "COMPLETE",
+        "time_seconds": 7.097391,
+        "size_bytes": 8541033
+      },
+      {
+        "title": "I Still Haven't Found What I'm Looking For",
+        "artist": "U2",
+        "status": "COMPLETE",
+        "time_seconds": 7.068928,
+        "size_bytes": 9907672
+      },
+      {
+        "title": "Wherever You Will Go - Acoustic",
+        "artist": "The Calling",
+        "status": "COMPLETE",
+        "time_seconds": 8.305332,
+        "size_bytes": 6074606
+      },
+      {
+        "title": "Don't Look Back in Anger - Remastered",
+        "artist": "Oasis",
+        "status": "COMPLETE",
+        "time_seconds": 7.468647,
+        "size_bytes": 10492910
+      },
+      {
+        "title": "Creep",
+        "artist": "Radiohead",
+        "status": "COMPLETE",
+        "time_seconds": 7.555519,
+        "size_bytes": 8055730
+      },
+      {
+        "title": "The Pretender",
+        "artist": "Foo Fighters",
+        "status": "COMPLETE",
+        "time_seconds": 10.494301,
+        "size_bytes": 8753517
+      },
+      {
+        "title": "Highway to Hell",
+        "artist": "AC/DC",
+        "status": "COMPLETE",
+        "time_seconds": 9.157645,
+        "size_bytes": 6322240
+      },
+      {
+        "title": "(Baby I've Got You) On My Mind",
+        "artist": "Powderfinger",
+        "status": "COMPLETE",
+        "time_seconds": 6.311137,
+        "size_bytes": 6995150
+      },
+      {
+        "title": "One Last Breath",
+        "artist": "Creed",
+        "status": "COMPLETE",
+        "time_seconds": 8.315276,
+        "size_bytes": 7732168
+      },
+      {
+        "title": "Higher",
+        "artist": "Creed",
+        "status": "COMPLETE",
+        "time_seconds": 10.891003,
+        "size_bytes": 11211727
+      },
+      {
+        "title": "Walk",
+        "artist": "Foo Fighters",
+        "status": "COMPLETE",
+        "time_seconds": 9.815595,
+        "size_bytes": 7532532
+      },
+      {
+        "title": "Gotta Be Somebody",
+        "artist": "Nickelback",
+        "status": "COMPLETE",
+        "time_seconds": 8.702938,
+        "size_bytes": 7448471
+      },
+      {
+        "title": "Black Betty",
+        "artist": "Ram Jam",
+        "status": "COMPLETE",
+        "time_seconds": 8.357336,
+        "size_bytes": 8005814
+      },
+      {
+        "title": "Go Your Own Way - 2004 Remaster",
+        "artist": "Fleetwood Mac",
+        "status": "COMPLETE",
+        "time_seconds": 5.540954,
+        "size_bytes": 7426048
+      },
+      {
+        "title": "Angels - 2004 Mix",
+        "artist": "Robbie Williams",
+        "status": "COMPLETE",
+        "time_seconds": 10.337362,
+        "size_bytes": 9061636
+      },
+      {
+        "title": "What Hurts The Most",
+        "artist": "Rascal Flatts",
+        "status": "COMPLETE",
+        "time_seconds": 7.355892,
+        "size_bytes": 7035844
+      },
+      {
+        "title": "Fly Away",
+        "artist": "Lenny Kravitz",
+        "status": "COMPLETE",
+        "time_seconds": 7.085629,
+        "size_bytes": 7364369
+      },
+      {
+        "title": "Livin' la Vida Loca",
+        "artist": "Ricky Martin",
+        "status": "COMPLETE",
+        "time_seconds": 7.354888,
+        "size_bytes": 7993419
+      },
+      {
+        "title": "About A Girl",
+        "artist": "Nirvana",
+        "status": "COMPLETE",
+        "time_seconds": 6.804758,
+        "size_bytes": 5888727
+      },
+      {
+        "title": "Semi-Charmed Life",
+        "artist": "Third Eye Blind",
+        "status": "COMPLETE",
+        "time_seconds": 6.92532,
+        "size_bytes": 8309716
+      },
+      {
+        "title": "Unchained Melody",
+        "artist": "The Righteous Brothers",
+        "status": "COMPLETE",
+        "time_seconds": 6.601937,
+        "size_bytes": 7053898
+      },
+      {
+        "title": "Drops of Jupiter (Tell Me)",
+        "artist": "Train",
+        "status": "COMPLETE",
+        "time_seconds": 7.111955,
+        "size_bytes": 8441523
+      },
+      {
+        "title": "Good Riddance (Time of Your Life)",
+        "artist": "Green Day",
+        "status": "COMPLETE",
+        "time_seconds": 5.509942,
+        "size_bytes": 4994030
+      },
+      {
+        "title": "Drive",
+        "artist": "Incubus",
+        "status": "COMPLETE",
+        "time_seconds": 6.612439,
+        "size_bytes": 6703544
+      },
+      {
+        "title": "The Middle",
+        "artist": "Jimmy Eat World",
+        "status": "COMPLETE",
+        "time_seconds": 5.56345,
+        "size_bytes": 5478957
+      },
+      {
+        "title": "Learn to Fly",
+        "artist": "Foo Fighters",
+        "status": "COMPLETE",
+        "time_seconds": 6.423868,
+        "size_bytes": 8001620
+      },
+      {
+        "title": "All The Small Things",
+        "artist": "blink-182",
+        "status": "COMPLETE",
+        "time_seconds": 5.598596,
+        "size_bytes": 6070369
+      },
+      {
+        "title": "Mr. Brightside",
+        "artist": "The Killers",
+        "status": "COMPLETE",
+        "time_seconds": 5.490034,
+        "size_bytes": 6751965
+      },
+      {
+        "title": "Mr. Jones",
+        "artist": "Counting Crows",
+        "status": "COMPLETE",
+        "time_seconds": 6.008875,
+        "size_bytes": 8665699
+      },
+      {
+        "title": "You Get What You Give",
+        "artist": "New Radicals",
+        "status": "COMPLETE",
+        "time_seconds": 6.746685,
+        "size_bytes": 9499781
+      },
+      {
+        "title": "She's so High",
+        "artist": "Tal Bachman",
+        "status": "COMPLETE",
+        "time_seconds": 5.520954,
+        "size_bytes": 6648860
+      }
+    ]
+  },
+  {
+    "timestamp": "2026-02-28T10:03:22.138425",
+    "playlist_id": "49ee76e3",
+    "playlist_url": "https://open.spotify.com/playlist/37i9dQZF1FadmMttqpKQtH?si=e88f33bc1f46482d",
+    "library": "Aether_Archive",
+    "engine": "cpu",
+    "harvest_duration_seconds": 14.59,
+    "ingest_duration_seconds": 38.69,
+    "combined_logic_duration": 53.28,
+    "avg_time_per_song": 0.61,
+    "stats": {
+      "total": 88,
+      "complete": 87,
+      "no_match": 0,
+      "failed": 1
+    },
+    "largest_song": "Runaway",
+    "largest_size_bytes": 16401622,
+    "tracks": [
+      {
+        "title": "A Man Without Love",
+        "artist": "Engelbert Humperdinck",
+        "status": "COMPLETE",
+        "time_seconds": 12.550715,
+        "size_bytes": 6547883
+      },
+      {
+        "title": "Switch It up (Slowed + Bass Boosted)",
+        "artist": "Azide",
+        "status": "COMPLETE",
+        "time_seconds": 11.072493,
+        "size_bytes": 5613661
+      },
+      {
+        "title": "Big Weenie",
+        "artist": "Eminem",
+        "status": "COMPLETE",
+        "time_seconds": 13.232635,
+        "size_bytes": 8491956
+      },
+      {
+        "title": "I Won't Back Down",
+        "artist": "Johnny Cash",
+        "status": "COMPLETE",
+        "time_seconds": 11.01521,
+        "size_bytes": 4453320
+      },
+      {
+        "title": "Invincible",
+        "artist": "Pop Smoke",
+        "status": "COMPLETE",
+        "time_seconds": 6.616404,
+        "size_bytes": 4380159
+      },
+      {
+        "title": "The Perfect Girl",
+        "artist": "Mareux",
+        "status": "COMPLETE",
+        "time_seconds": 11.874317,
+        "size_bytes": 6422298
+      },
+      {
+        "title": "Get Free - Chrome Sparks Remix",
+        "artist": "Major Lazer, Amber Coffman, Chrome Sparks",
+        "status": "COMPLETE",
+        "time_seconds": 14.310465,
+        "size_bytes": 9014347
+      },
+      {
+        "title": "Cocaine Blues - Live at Folsom State Prison, Folsom, CA - January 1968",
+        "artist": "Johnny Cash",
+        "status": "COMPLETE",
+        "time_seconds": 12.181737,
+        "size_bytes": 5967797
+      },
+      {
+        "title": "Such a Whore (Baddest Remix)",
+        "artist": "JVLA",
+        "status": "COMPLETE",
+        "time_seconds": 9.794175,
+        "size_bytes": 4485892
+      },
+      {
+        "title": "Resurrection",
+        "artist": "GANK",
+        "status": "COMPLETE",
+        "time_seconds": 9.927324,
+        "size_bytes": 4076316
+      },
+      {
+        "title": "Under the Bridge",
+        "artist": "Red Hot Chili Peppers",
+        "status": "COMPLETE",
+        "time_seconds": 12.303502,
+        "size_bytes": 8541033
+      },
+      {
+        "title": "I Got Stripes - Live at Folsom State Prison, Folsom, CA (2nd Show) - January 1968",
+        "artist": "Johnny Cash",
+        "status": "COMPLETE",
+        "time_seconds": 9.297508,
+        "size_bytes": 3274096
+      },
+      {
+        "title": "Remember Me",
+        "artist": "Talamanca",
+        "status": "COMPLETE",
+        "time_seconds": 11.471455,
+        "size_bytes": 6227296
+      },
+      {
+        "title": "Something in the Orange",
+        "artist": "Zach Bryan",
+        "status": "COMPLETE",
+        "time_seconds": 12.967166,
+        "size_bytes": 6412061
+      },
+      {
+        "title": "Money Trees",
+        "artist": "Kendrick Lamar, Jay Rock",
+        "status": "COMPLETE",
+        "time_seconds": 15.514656,
+        "size_bytes": 12838183
+      },
+      {
+        "title": "Bandoleros",
+        "artist": "Don Omar, Tego Calder\u00f3n",
+        "status": "COMPLETE",
+        "time_seconds": 14.099785,
+        "size_bytes": 9477894
+      },
+      {
+        "title": "Drive Forever",
+        "artist": "T3NZU",
+        "status": "COMPLETE",
+        "time_seconds": 11.125567,
+        "size_bytes": 4825862
+      },
+      {
+        "title": "SUPER SMASH BROS BRAWL DRILL SLOWED + REVERB",
+        "artist": "DRILL GATES",
+        "status": "COMPLETE",
+        "time_seconds": 13.435856,
+        "size_bytes": 8548179
+      },
+      {
+        "title": "Fake Gold",
+        "artist": "Daktyl",
+        "status": "COMPLETE",
+        "time_seconds": 10.549547,
+        "size_bytes": 5902451
+      },
+      {
+        "title": "Twice",
+        "artist": "Catfish and the Bottlemen",
+        "status": "COMPLETE",
+        "time_seconds": 12.670496,
+        "size_bytes": 6649082
+      },
+      {
+        "title": "Out of Time",
+        "artist": "Harley Reid, l\u00edue",
+        "status": "COMPLETE",
+        "time_seconds": 5.066181,
+        "size_bytes": 3437473
+      },
+      {
+        "title": "Until I Found You (Sped Up) - Heaven When I Held You Again How Could We Ever Just Be Friends",
+        "artist": "Hiko",
+        "status": "COMPLETE",
+        "time_seconds": 4.555493,
+        "size_bytes": 4110788
+      },
+      {
+        "title": "\u041c\u043e\u044f \u0433\u043e\u043b\u043e\u0432\u0430 \u0432\u0438\u043d\u0442\u043e\u043c",
+        "artist": "kostromin",
+        "status": "COMPLETE",
+        "time_seconds": 5.375882,
+        "size_bytes": 4983805
+      },
+      {
+        "title": "Virus (How About Now) - Radio Edit",
+        "artist": "Martin Garrix, MOTi",
+        "status": "COMPLETE",
+        "time_seconds": 5.686864,
+        "size_bytes": 6261865
+      },
+      {
+        "title": "Gassed Up",
+        "artist": "Zeds Dead, Subtronics, Flowdan",
+        "status": "COMPLETE",
+        "time_seconds": 6.314239,
+        "size_bytes": 8134763
+      },
+      {
+        "title": "Strangers",
+        "artist": "Kenya Grace",
+        "status": "COMPLETE",
+        "time_seconds": 7.487481,
+        "size_bytes": 5336152
+      },
+      {
+        "title": "Drive Forever",
+        "artist": "Gudrapz",
+        "status": "COMPLETE",
+        "time_seconds": 5.846994,
+        "size_bytes": 6109768
+      },
+      {
+        "title": "This Feeling",
+        "artist": "my!lane",
+        "status": "COMPLETE",
+        "time_seconds": 5.260582,
+        "size_bytes": 5425167
+      },
+      {
+        "title": "Ocean Eyes - Blackbear Remix",
+        "artist": "Billie Eilish, blackbear",
+        "status": "COMPLETE",
+        "time_seconds": 6.237143,
+        "size_bytes": 5703432
+      },
+      {
+        "title": "AVOID ME 2 - Sped Up",
+        "artist": "KUTE",
+        "status": "COMPLETE",
+        "time_seconds": 5.56343,
+        "size_bytes": 2783516
+      },
+      {
+        "title": "Pure Luck",
+        "artist": "Ninajirachi, Freya Staer",
+        "status": "COMPLETE",
+        "time_seconds": 8.367189,
+        "size_bytes": 6346709
+      },
+      {
+        "title": "Not About You",
+        "artist": "Glades",
+        "status": "COMPLETE",
+        "time_seconds": 7.872135,
+        "size_bytes": 6317487
+      },
+      {
+        "title": "Je te laisserai des mots",
+        "artist": "Patrick Watson",
+        "status": "COMPLETE",
+        "time_seconds": 7.658544,
+        "size_bytes": 4570954
+      },
+      {
+        "title": "Sundress",
+        "artist": "A$AP Rocky",
+        "status": "COMPLETE",
+        "time_seconds": 6.730756,
+        "size_bytes": 5113574
+      },
+      {
+        "title": "In the Summertime",
+        "artist": "Mungo Jerry",
+        "status": "COMPLETE",
+        "time_seconds": 8.818454,
+        "size_bytes": 7125936
+      },
+      {
+        "title": "Folsom Prison Blues - Live at Folsom State Prison, Folsom, CA - January 1968",
+        "artist": "Johnny Cash",
+        "status": "COMPLETE",
+        "time_seconds": 6.652661,
+        "size_bytes": 5285723
+      },
+      {
+        "title": "I Like The Way - Radio Edit",
+        "artist": "Bodyrockers",
+        "status": "COMPLETE",
+        "time_seconds": 7.954403,
+        "size_bytes": 5822674
+      },
+      {
+        "title": "Drill March",
+        "artist": "Smurph",
+        "status": "COMPLETE",
+        "time_seconds": 4.127222,
+        "size_bytes": 2157613
+      },
+      {
+        "title": "Limelight - NGHTMRE Remix",
+        "artist": "Just A Gent, ROZES",
+        "status": "COMPLETE",
+        "time_seconds": 7.70468,
+        "size_bytes": 7894479
+      },
+      {
+        "title": "The Book of Boba Fett",
+        "artist": "Ludwig G\u00f6ransson",
+        "status": "FAILED",
+        "time_seconds": 0,
+        "size_bytes": 0
+      },
+      {
+        "title": "Still Standing",
+        "artist": "Hilltop Hoods",
+        "status": "COMPLETE",
+        "time_seconds": 6.688854,
+        "size_bytes": 6640799
+      },
+      {
+        "title": "Dark Red",
+        "artist": "Steve Lacy",
+        "status": "COMPLETE",
+        "time_seconds": 6.03221,
+        "size_bytes": 5156582
+      },
+      {
+        "title": "Only In My Mind",
+        "artist": "Kenya Grace",
+        "status": "COMPLETE",
+        "time_seconds": 6.170082,
+        "size_bytes": 4905238
+      },
+      {
+        "title": "Can You Hear The Music",
+        "artist": "Ludwig G\u00f6ransson",
+        "status": "COMPLETE",
+        "time_seconds": 5.112732,
+        "size_bytes": 3484427
+      },
+      {
+        "title": "Crazy Mega Cool",
+        "artist": "Paul Elstak, Russian Village Boys",
+        "status": "COMPLETE",
+        "time_seconds": 5.51326,
+        "size_bytes": 5454980
+      },
+      {
+        "title": "Vegeta",
+        "artist": "ENDUZIX",
+        "status": "COMPLETE",
+        "time_seconds": 5.394214,
+        "size_bytes": 4955313
+      },
+      {
+        "title": "Runaway",
+        "artist": "Kanye West, Pusha T",
+        "status": "COMPLETE",
+        "time_seconds": 11.197472,
+        "size_bytes": 16401622
+      },
+      {
+        "title": "Make Them Wheels Roll",
+        "artist": "SAFIA",
+        "status": "COMPLETE",
+        "time_seconds": 6.758526,
+        "size_bytes": 7859758
+      },
+      {
+        "title": "Photo ID",
+        "artist": "Remi Wolf",
+        "status": "COMPLETE",
+        "time_seconds": 8.794236,
+        "size_bytes": 8978101
+      },
+      {
+        "title": "Push",
+        "artist": "Matchbox Twenty",
+        "status": "COMPLETE",
+        "time_seconds": 8.671108,
+        "size_bytes": 8177799
+      },
+      {
+        "title": "After Dark",
+        "artist": "Mr.Kitty",
+        "status": "COMPLETE",
+        "time_seconds": 8.280454,
+        "size_bytes": 8471918
+      },
+      {
+        "title": "Dream On",
+        "artist": "Aerosmith",
+        "status": "COMPLETE",
+        "time_seconds": 6.977046,
+        "size_bytes": 8009653
+      },
+      {
+        "title": "Hey Now",
+        "artist": "London Grammar",
+        "status": "COMPLETE",
+        "time_seconds": 6.460423,
+        "size_bytes": 5201321
+      },
+      {
+        "title": "Satisfaction - Uk Radio Edit",
+        "artist": "Benny Benassi, The Biz",
+        "status": "COMPLETE",
+        "time_seconds": 6.555735,
+        "size_bytes": 4667326
+      },
+      {
+        "title": "TOKYO",
+        "artist": "BROCKHAMPTON",
+        "status": "COMPLETE",
+        "time_seconds": 8.386049,
+        "size_bytes": 6489973
+      },
+      {
+        "title": "Soundcheck",
+        "artist": "Catfish and the Bottlemen",
+        "status": "COMPLETE",
+        "time_seconds": 8.870633,
+        "size_bytes": 8537527
+      },
+      {
+        "title": "Sweater Weather",
+        "artist": "The Neighbourhood",
+        "status": "COMPLETE",
+        "time_seconds": 6.978277,
+        "size_bytes": 7713556
+      },
+      {
+        "title": "Steady Setting Sun",
+        "artist": "Vellevide",
+        "status": "COMPLETE",
+        "time_seconds": 12.644034,
+        "size_bytes": 9685151
+      },
+      {
+        "title": "Crave You - Adventure Club Remix",
+        "artist": "Flight Facilities, Adventure Club",
+        "status": "COMPLETE",
+        "time_seconds": 8.306486,
+        "size_bytes": 7483717
+      },
+      {
+        "title": "golden hour",
+        "artist": "JVKE",
+        "status": "COMPLETE",
+        "time_seconds": 7.195394,
+        "size_bytes": 7004051
+      },
+      {
+        "title": "Meteor - Sped Up Edit",
+        "artist": "Kenya Grace",
+        "status": "COMPLETE",
+        "time_seconds": 7.771371,
+        "size_bytes": 5150788
+      },
+      {
+        "title": "Makeba - Ian Asher Remix",
+        "artist": "Jain, Ian Asher",
+        "status": "COMPLETE",
+        "time_seconds": 6.410481,
+        "size_bytes": 4159595
+      },
+      {
+        "title": "Little Dark Age",
+        "artist": "MGMT",
+        "status": "COMPLETE",
+        "time_seconds": 9.146437,
+        "size_bytes": 10253055
+      },
+      {
+        "title": "Hold Me",
+        "artist": "Lavern",
+        "status": "COMPLETE",
+        "time_seconds": 7.045187,
+        "size_bytes": 4435137
+      },
+      {
+        "title": "Jackson - Live at Folsom State Prison, Folsom, CA - January 1968",
+        "artist": "Johnny Cash",
+        "status": "COMPLETE",
+        "time_seconds": 7.250385,
+        "size_bytes": 5674175
+      },
+      {
+        "title": "\u0421\u0443\u0434\u043d\u043e (\u0411\u043e\u0440\u0438\u0441 \u0420\u044b\u0436\u0438\u0439)",
+        "artist": "Molchat Doma",
+        "status": "COMPLETE",
+        "time_seconds": 7.178996,
+        "size_bytes": 4691538
+      },
+      {
+        "title": "Video Games",
+        "artist": "Lana Del Rey",
+        "status": "COMPLETE",
+        "time_seconds": 10.05683,
+        "size_bytes": 7778347
+      },
+      {
+        "title": "Covered in Chrome",
+        "artist": "Violent Soho",
+        "status": "COMPLETE",
+        "time_seconds": 4.959684,
+        "size_bytes": 4364737
+      },
+      {
+        "title": "Little Things",
+        "artist": "Ziggy Ramo, Paul Kelly",
+        "status": "COMPLETE",
+        "time_seconds": 11.153494,
+        "size_bytes": 13927855
+      },
+      {
+        "title": "Miss You",
+        "artist": "southstar",
+        "status": "COMPLETE",
+        "time_seconds": 7.131706,
+        "size_bytes": 6474805
+      },
+      {
+        "title": "UNFAZED",
+        "artist": "ARXMANE",
+        "status": "COMPLETE",
+        "time_seconds": 5.753303,
+        "size_bytes": 5920714
+      },
+      {
+        "title": "Quiver",
+        "artist": "SILK",
+        "status": "COMPLETE",
+        "time_seconds": 8.366427,
+        "size_bytes": 6014238
+      },
+      {
+        "title": "Supra",
+        "artist": "\u0414\u0415\u0422\u0418 RAVE",
+        "status": "COMPLETE",
+        "time_seconds": 5.474038,
+        "size_bytes": 5032598
+      },
+      {
+        "title": "Virtue",
+        "artist": "Kllo",
+        "status": "COMPLETE",
+        "time_seconds": 6.299098,
+        "size_bytes": 6989166
+      },
+      {
+        "title": "Suffer",
+        "artist": "Petit Biscuit, Skott",
+        "status": "COMPLETE",
+        "time_seconds": 6.214771,
+        "size_bytes": 6785734
+      },
+      {
+        "title": "what we had was real",
+        "artist": "Rommii",
+        "status": "COMPLETE",
+        "time_seconds": 5.159898,
+        "size_bytes": 4441054
+      },
+      {
+        "title": "We Used To Be Friends",
+        "artist": "The Dandy Warhols",
+        "status": "COMPLETE",
+        "time_seconds": 8.205776,
+        "size_bytes": 6436282
+      },
+      {
+        "title": "High Enough - RAC Remix",
+        "artist": "K.Flay, RAC",
+        "status": "COMPLETE",
+        "time_seconds": 6.469033,
+        "size_bytes": 6632838
+      },
+      {
+        "title": "Strong",
+        "artist": "London Grammar",
+        "status": "COMPLETE",
+        "time_seconds": 8.291136,
+        "size_bytes": 6644992
+      },
+      {
+        "title": "I Like You (A Happier Song) (with Doja Cat)",
+        "artist": "Post Malone, Doja Cat",
+        "status": "COMPLETE",
+        "time_seconds": 7.326434,
+        "size_bytes": 6411396
+      },
+      {
+        "title": "Apart Of Me",
+        "artist": "OTR, Devault",
+        "status": "COMPLETE",
+        "time_seconds": 7.247544,
+        "size_bytes": 6530323
+      },
+      {
+        "title": "Green, Green Grass of Home - Live at Folsom State Prison, Folsom, CA - January 1968",
+        "artist": "Johnny Cash",
+        "status": "COMPLETE",
+        "time_seconds": 6.756646,
+        "size_bytes": 5819298
+      },
+      {
+        "title": "Let You Know",
+        "artist": "Flume, London Grammar",
+        "status": "COMPLETE",
+        "time_seconds": 7.41593,
+        "size_bytes": 6540677
+      },
+      {
+        "title": "Wicked Game",
+        "artist": "Chris Isaak",
+        "status": "COMPLETE",
+        "time_seconds": 9.059876,
+        "size_bytes": 9545946
+      },
+      {
+        "title": "Substance",
+        "artist": "03 Greedo",
+        "status": "COMPLETE",
+        "time_seconds": 7.012571,
+        "size_bytes": 6752822
+      },
+      {
+        "title": "How Bizarre",
+        "artist": "OMC",
+        "status": "COMPLETE",
+        "time_seconds": 6.632863,
+        "size_bytes": 7010386
+      },
+      {
+        "title": "B.O.T.A. (Baddest Of Them All) [feat. Eliza Rose & Interplanetary Criminal] [Sped Up Version]",
+        "artist": "sped up nightcore, Eliza Rose, Interplanetary Criminal",
+        "status": "COMPLETE",
+        "time_seconds": 5.791956,
+        "size_bytes": 5990231
+      },
+      {
+        "title": "Unstoppable",
+        "artist": "Sandaru Sathsara",
+        "status": "COMPLETE",
+        "time_seconds": 5.796204,
+        "size_bytes": 5536727
+      }
+    ]
   }
 ]

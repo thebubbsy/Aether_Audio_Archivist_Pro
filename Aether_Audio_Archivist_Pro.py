@@ -24,15 +24,36 @@ DUR_REGEX = re.compile(r'^\d{1,2}:\d{2}(:\d{2})?$')
 
 def bootstrap_dependencies():
     """Ensure system vectors are aligned."""
+    # Playwright expects a browsers path. For PyInstaller, it defaults to the temporary MEIPASS, 
+    # which is deleted on exit. We should set it to the user's Local AppData to persist the browser.
+    local_app_data = Path.home() / "AppData" / "Local" / "ms-playwright"
+    os.environ["PLAYWRIGHT_BROWSERS_PATH"] = str(local_app_data)
+
     # Frozen EXE mode: all deps are bundled, just configure paths
     if getattr(sys, 'frozen', False):
         bundle_dir = Path(sys._MEIPASS) if hasattr(sys, '_MEIPASS') else Path(sys.executable).parent
         ffmpeg_dir = bundle_dir / "ffmpeg_bundle"
         if ffmpeg_dir.exists():
             os.environ["PATH"] = str(ffmpeg_dir) + os.pathsep + os.environ.get("PATH", "")
-        pw_dir = bundle_dir / "playwright_browser"
-        if pw_dir.exists():
-            os.environ["PLAYWRIGHT_BROWSERS_PATH"] = str(pw_dir)
+
+        # In frozen mode, ensure playwright browser is installed in Local AppData
+        try:
+            from playwright.async_api import async_playwright
+            async def check_playwright():
+                async with async_playwright() as p:
+                    try:
+                        # Test if browser exists
+                        browser = await p.chromium.launch()
+                        await browser.close()
+                    except Exception:
+                        print("[*] DOWNLOADING CHROMIUM HEADLESS SHELL...")
+                        # Run the playwright CLI to install from the bundled driver
+                        from playwright._impl._driver import compute_driver_executable, get_driver_env
+                        driver_executable = compute_driver_executable()
+                        subprocess.check_call([str(driver_executable), "install", "chromium"], env=get_driver_env())
+            asyncio.run(check_playwright())
+        except Exception as e:
+            print(f"Failed to bootstrap Playwright: {e}")
         return
 
     print("[*] SYNCING SYSTEM VECTORS (BOOTSTRAPPING)...")
@@ -42,7 +63,7 @@ def bootstrap_dependencies():
             __import__(dep)
         except ImportError:
             subprocess.check_call([sys.executable, "-m", "pip", "install", dep, "-q"])
-    
+
     # Playwright browser validation
     try:
         from playwright.async_api import async_playwright
@@ -55,7 +76,6 @@ def bootstrap_dependencies():
         asyncio.run(check_playwright())
     except Exception:
         pass
-
 # Initialize environment
 bootstrap_dependencies()
 
