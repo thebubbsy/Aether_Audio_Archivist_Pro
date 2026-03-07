@@ -2,7 +2,6 @@ import os
 import sys
 import asyncio
 import json
-import random
 import subprocess
 import functools
 import re
