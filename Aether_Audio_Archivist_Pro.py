@@ -47,10 +47,13 @@ def bootstrap_dependencies():
                         await browser.close()
                     except Exception:
                         print("[*] DOWNLOADING CHROMIUM HEADLESS SHELL...")
-                        # Run the playwright CLI to install from the bundled driver
+                        import subprocess
+                        import sys
                         from playwright._impl._driver import compute_driver_executable, get_driver_env
                         driver_executable = compute_driver_executable()
-                        subprocess.check_call([str(driver_executable), "install", "chromium"], env=get_driver_env())
+                        env = get_driver_env()
+                        env["PLAYWRIGHT_BROWSERS_PATH"] = os.environ.get("PLAYWRIGHT_BROWSERS_PATH")
+                        subprocess.run([str(driver_executable), "install", "chromium"], env=env, check=True)
             asyncio.run(check_playwright())
         except Exception as e:
             print(f"Failed to bootstrap Playwright: {e}")
