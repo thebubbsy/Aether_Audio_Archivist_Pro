@@ -29,6 +29,30 @@ def bootstrap_dependencies():
     local_app_data = Path.home() / "AppData" / "Local" / "ms-playwright"
     os.environ["PLAYWRIGHT_BROWSERS_PATH"] = str(local_app_data)
 
+    # Bootstrapper for FFmpeg/FFprobe binaries (required for yt-dlp audio extraction)
+    ffmpeg_dir = Path.home() / "AppData" / "Local" / "AetherArchivist" / "ffmpeg"
+    ffmpeg_dir.mkdir(parents=True, exist_ok=True)
+    os.environ["PATH"] = str(ffmpeg_dir) + os.pathsep + os.environ.get("PATH", "")
+
+    if not (ffmpeg_dir / "ffmpeg.exe").exists() or not (ffmpeg_dir / "ffprobe.exe").exists():
+        try:
+            print("[*] DOWNLOADING FFMPEG/FFPROBE CORE (REQUIRED FOR AUDIO)...")
+            import urllib.request
+            import zipfile
+            from io import BytesIO
+            if not (ffmpeg_dir / "ffmpeg.exe").exists():
+                req = urllib.request.Request("https://github.com/ffbinaries/ffbinaries-prebuilt/releases/download/v4.4.1/ffmpeg-4.4.1-win-64.zip", headers={'User-Agent': 'Mozilla/5.0'})
+                with urllib.request.urlopen(req) as resp:
+                    with zipfile.ZipFile(BytesIO(resp.read())) as z:
+                        z.extract("ffmpeg.exe", ffmpeg_dir)
+            if not (ffmpeg_dir / "ffprobe.exe").exists():
+                req = urllib.request.Request("https://github.com/ffbinaries/ffbinaries-prebuilt/releases/download/v4.4.1/ffprobe-4.4.1-win-64.zip", headers={'User-Agent': 'Mozilla/5.0'})
+                with urllib.request.urlopen(req) as resp:
+                    with zipfile.ZipFile(BytesIO(resp.read())) as z:
+                        z.extract("ffprobe.exe", ffmpeg_dir)
+        except Exception as e:
+            print(f"Failed to bootstrap FFmpeg: {e}")
+
     # Frozen EXE mode: all deps are bundled, just configure paths
     if getattr(sys, 'frozen', False):
         bundle_dir = Path(sys._MEIPASS) if hasattr(sys, '_MEIPASS') else Path(sys.executable).parent
