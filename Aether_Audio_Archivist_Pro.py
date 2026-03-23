@@ -24,7 +24,7 @@ DUR_REGEX = re.compile(r'^\d{1,2}:\d{2}(:\d{2})?$')
 
 def bootstrap_dependencies():
     """Ensure system vectors are aligned."""
-    # Playwright expects a browsers path. For PyInstaller, it defaults to the temporary MEIPASS, 
+    # Playwright expects a browsers path. For PyInstaller, it defaults to the temporary MEIPASS,
     # which is deleted on exit. We should set it to the user's Local AppData to persist the browser.
     local_app_data = Path.home() / "AppData" / "Local" / "ms-playwright"
     os.environ["PLAYWRIGHT_BROWSERS_PATH"] = str(local_app_data)
@@ -159,21 +159,51 @@ def _is_blocked(title: str) -> bool:
     return any(term in t for term in BLOCKLIST_TERMS)
 
 def _score_result(result: dict, track: dict, spotify_dur: int) -> float:
-    """P15: Multi-signal scorer — duration 60%, title 30%, views 10%."""
+    """P15: Multi-signal scorer — duration 45%, title 20%, views 20%, channel_auth 15%."""
     dur = result.get('duration', 0) or 0
     title = result.get('title', '').lower()
+
     dur_diff = abs(dur - spotify_dur)
     if dur_diff > 90:
         dur_score = 0.0
     elif dur_diff > 30:
-        dur_score = 0.3 * (1.0 - (dur_diff - 30) / 60.0)
+        dur_score = 0.45 * (1.0 - (dur_diff - 30) / 60.0)
     else:
-        dur_score = 1.0 - (dur_diff / 30.0) * 0.3
+        dur_score = 1.0 - (dur_diff / 30.0) * 0.45
+
     search_str = f"{track.get('artist','')} {track.get('title','')}".lower()
     title_score = SequenceMatcher(None, search_str, title).ratio()
+
     views = result.get('view_count', 0) or 0
-    view_score = min(math.log10(max(views, 1)) / 8.0, 1.0)
-    return (dur_score * 0.60) + (title_score * 0.30) + (view_score * 0.10)
+    view_score = min(math.log10(max(views, 1)) / 9.0, 1.0)
+
+    artist = track.get('artist', '').lower()
+    channel = (result.get('channel') or '').lower()
+    uploader = (result.get('uploader') or '').lower()
+    is_verified = result.get('channel_is_verified', False)
+
+    auth_score = 0.0
+    if is_verified:
+        auth_score += 0.5
+
+    artist_clean = artist.replace(' ', '')
+    channel_clean = channel.replace(' ', '')
+    uploader_clean = uploader.replace(' ', '')
+
+    if artist_clean and (artist_clean in channel_clean or artist_clean in uploader_clean):
+        auth_score += 0.5
+    elif "vevo" in channel_clean or "official" in channel_clean or "-topic" in channel_clean:
+        auth_score += 0.3
+
+    auth_score = min(auth_score, 1.0)
+
+    penalty = 0.0
+    if "cover" not in search_str and "cover" in title:
+        penalty += 0.2
+    if "live" not in search_str and "live" in title:
+        penalty += 0.1
+
+    return max(0.0, (dur_score * 0.45) + (title_score * 0.20) + (view_score * 0.20) + (auth_score * 0.15) - penalty)
 
 def _sanitise_filename(name: str) -> str:
     """Refactor: NFC-normalized, filesystem-safe filename preservation."""
@@ -335,19 +365,19 @@ class Launchpad(Screen):
         library = self.query_one("#library-input").value
         theme = self.query_one("#theme-select").value
         self.app.visual_theme = theme
-        
+
         if not url:
             self.app.notify("CRITICAL: SOURCE URL MISSING", severity="error")
             return
         if "open.spotify.com/playlist/" not in url:
             self.app.notify("ERROR: Must be a Spotify PLAYLIST URL", severity="error")
             return
-            
+
         try:
             thread_count = int(threads)
         except ValueError:
             thread_count = 36
-            
+
         self.app.push_screen(Archivist(url, library, thread_count, engine))
 
     @on(Button.Pressed, "#watchdog-btn")
@@ -458,7 +488,7 @@ async def scrape_playlist_data(url: str, include_recommended: bool = False) -> t
 
 class WatchdogScreen(Screen):
     """Clipboard Watchdog — collect Spotify URLs, preview tracks, then process on demand."""
-    
+
     BINDINGS = [
         Binding("escape", "stop_watchdog", "Stop Watchdog"),
         Binding("p", "preview_selected", "Preview Playlist"),
@@ -958,7 +988,7 @@ class PlaylistPreviewScreen(Screen):
 
 class Archivist(Screen):
     """The Operational Command Center."""
-    
+
     BINDINGS = [
         Binding("space", "toggle_select", "Toggle Selected"),
         Binding("a", "select_all", "Select Global All"),
@@ -975,7 +1005,7 @@ class Archivist(Screen):
         # Robust Sanitization: Strip accidental leading characters (like 'vhttps')
         if "http" in url:
             url = url[url.find("http"):]
-        
+
         self.url = url.strip()
         self.library = "".join([c for c in library if c.isalnum() or c in " -_"]).strip() or "Aether_Archive"
         self.threads = threads
@@ -1040,7 +1070,7 @@ class Archivist(Screen):
         table.cursor_type = "row"
         self.log_kernel("SYSTEM INITIALIZED. WELCOME, ARCHITECT BUBB.")
         self.live_timer = self.set_interval(0.25, self.update_timers)  # P7: 4Hz not 10Hz
-        
+
         # Register signal handlers for graceful exit
         try:
             for sig in (signal.SIGINT, signal.SIGTERM):
@@ -1052,7 +1082,7 @@ class Archivist(Screen):
             self._load_pre_tracks()
         else:
             self.scrape_tracks()
-    
+
     def update_timers(self) -> None:  # P7: runs at 4 Hz
         if self.harvest_start and not hasattr(self, 'harvest_dur_fixed'):
             self.live_harvest_time = (datetime.now() - self.harvest_start).total_seconds()
@@ -1067,7 +1097,7 @@ class Archivist(Screen):
         # P7: running sum, no full dict re-scan each tick
         size_mb = self._running_size / (1024 * 1024)
         self.query_one("#total-size-label").update(f"SIZE: {size_mb:.2f} MB")
-        
+
         # Auto-scroll indicator update
         indicator = self.query_one("#scroll-indicator")
         if self.auto_scroll:
@@ -1144,18 +1174,18 @@ class Archivist(Screen):
         if self.exit_handled: return
         self.exit_handled = True
         self.log_kernel("GRACEFUL SHUTDOWN INITIATED. CLEANING VECTORS...")
-        
+
         # Cancel workers
         for task in self.worker_tasks:
             task.cancel()
-            
+
         # Cleanup temp files
         try:
             for f in self.target_dir.glob("tmp_*.mp3"):
                 f.unlink(missing_ok=True)
         except Exception as e:
             self.log_kernel(f"CLEANUP ERR: {e}")
-            
+
         self.save_checkpoint()
         self.app.exit()
 
@@ -1177,28 +1207,28 @@ class Archivist(Screen):
         dur_regex = re.compile(r'^\d{1,2}:\d{2}(:\d{2})?$')
         self.log_kernel(f"DEPLOYING PROXIES TO: {self.url}")
         from playwright.async_api import async_playwright
-        
+
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
             page = await browser.new_page(
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             )
-            
+
             try:
                 await page.goto(self.url, timeout=60000)
                 await page.wait_for_load_state("load")
-                
+
                 # Dismiss cookie wall
                 try: await page.click('button#onetrust-accept-btn-handler', timeout=3000)
                 except: pass
 
                 await page.wait_for_selector('[data-testid="tracklist-row"]', timeout=30000)
-                
+
                 table = self.query_one(DataTable)
                 processed_ids = set()
-                
+
                 self.log_kernel("HARVESTING VECTORS (BULK JS EXTRACTION)...")
-                
+
                 # Infinite Scroll Engine with Bulk Extraction
                 last_count = -1
                 stable_count = 0
@@ -1211,13 +1241,13 @@ class Archivist(Screen):
                         }
                         return rows.length;
                     }''')
-                    
+
                     await page.mouse.wheel(0, 5000)
                     for _ in range(2):
                          await page.keyboard.press("PageDown")
                          # Reduced delay for snappier propagation
                          await asyncio.sleep(0.1)
-                    
+
                     # 20x Speedup: Extract all visible track data in one JS execution
                     extracted_tracks = await page.evaluate('''() => {
                         const scope = document.querySelector('[data-testid="playlist-tracklist"]') || document;
@@ -1225,7 +1255,7 @@ class Archivist(Screen):
                             const titleElem = row.querySelector('div[dir="auto"]');
                             const artistElems = row.querySelectorAll('a[href*="/artist/"]');
                             const durElem = row.querySelector('div[data-testid="tracklist-row-duration"]');
-                            
+
                             // Fallback for duration if standard testid missing (virtualization artifact)
                             let duration = durElem ? durElem.innerText : "0:00";
                             if (duration === "0:00") {
@@ -1261,15 +1291,15 @@ class Archivist(Screen):
                                 "status": "WAITING FOR PROPAGATION"
                             })
                             table.add_row(
-                                "[X]", 
-                                render_status_badge("WAITING FOR PROPAGATION"), 
-                                track_data['artists'], 
-                                track_data['title'][:40], 
-                                track_data['duration'], 
-                                "", 
+                                "[X]",
+                                render_status_badge("WAITING FOR PROPAGATION"),
+                                track_data['artists'],
+                                track_data['title'][:40],
+                                track_data['duration'],
+                                "",
                                 key=str(idx)
                             )
-                    
+
                     current_count = len(self.tracks)
                     if current_count == last_count:
                         stable_count += 1
@@ -1278,7 +1308,7 @@ class Archivist(Screen):
                         last_count = current_count
                         if current_count > 0:
                             self.log_kernel(f"PROPAGATED {current_count} VECTORS...")
-                    
+
                     # P2: FIXED O(N²) — only dispatch each index once via matched_set
                     for i in range(len(self.tracks)):
                         if i not in self._dispatched and self.tracks[i]["status"] == "WAITING FOR PROPAGATION":
@@ -1366,14 +1396,14 @@ class Archivist(Screen):
         self.track_times.clear(); self.track_sizes.clear()
         self.pending_tasks = len(selected)
         self.log_kernel(f"COMMENCING QUEUE-POOL INGESTION (POOL: {self.threads}, ENGINE: {self.engine.upper()}).")
-        
+
         # Initialize Workers
         for _ in range(min(self.threads, len(selected))):
             self.worker_tasks.append(asyncio.create_task(self.drain_worker()))
-            
+
         for idx in selected:
             self.ingest_queue.put_nowait(idx)
-            
+
     async def drain_worker(self) -> None:
         """Consumer coroutine: Drains the ingest_queue with persistence logic."""
         while True:
@@ -1383,12 +1413,12 @@ class Archivist(Screen):
                 await self._resolve_gate.wait()
                 await self._process_track(index)
                 self.ingest_queue.task_done()
-                
+
                 # Check if we are done
                 if self.ingest_queue.empty() and self.pending_tasks == 0:
                     ingest_dur = (datetime.now() - self.ingest_start).total_seconds()
                     await self.close_mission(ingest_dur)
-                    
+
             except asyncio.CancelledError:
                 break
             except Exception as e:
@@ -1473,7 +1503,7 @@ class Archivist(Screen):
         for q in queries:
             if results:
                 break
-            
+
             # P16: Check cache before search
             if q in _SEARCH_CACHE:
                 results = _SEARCH_CACHE[q]
@@ -1615,16 +1645,16 @@ class Archivist(Screen):
                         tags = ID3(str(dest))
                     except ID3NoHeaderError:
                         tags = ID3()
-                    
+
                     tags.clear()
                     # TIT2: Title, TPE1: Artist, TALB: Album (Library), TRCK: Track Num, TDRC: Year
                     tags.add(TIT2(encoding=3, text=track['title']))
                     tags.add(TPE1(encoding=3, text=track['artist']))
                     tags.add(TALB(encoding=3, text=self.library))
-                    
+
                     idx_str = str(track.get('track_num', index + 1))
                     tags.add(TRCK(encoding=3, text=idx_str))
-                    
+
                     # TDRC: Date (Year)
                     year = (best.get('upload_date') or "")[:4]
                     if year:
@@ -1638,7 +1668,7 @@ class Archivist(Screen):
                             encoding=3, mime='image/jpeg', type=3,
                             desc='Cover', data=art
                         ))
-                    
+
                     tags.save(str(dest), v2_version=3)
                 except Exception as e:
                     self.app.call_from_thread(self.log_kernel, f"MUTAGEN OVERRIDE ERR: {e}")
@@ -1688,7 +1718,7 @@ class Archivist(Screen):
             table.update_cell(str(message.index), self.col_keys["STATUS"], render_status_badge(message.status))
             self.save_checkpoint() # P: Session checkpoint after state change
         except: pass
-    
+
     def on_resolve_failed(self, message: ResolveFailed) -> None:
         self.app.push_screen(ResolveMatchScreen(message.index, message.track, message.results, self))
 
@@ -1704,7 +1734,7 @@ class Archivist(Screen):
                 # Direct library usage is significantly faster than subprocess
                 result = ydl.extract_info(f"ytsearch5:{query}", download=False)
                 return result.get('entries', [])
-        
+
         return await asyncio.to_thread(run_search)
 
     @staticmethod
@@ -1716,13 +1746,13 @@ class Archivist(Screen):
             if len(parts) == 3: return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
         except: return 0
         return 0
-    
+
     async def save_mission_report(self, ingest_dur):
         """Asynchronous mission debriefing."""
         import hashlib
         playlist_id = hashlib.md5(self.url.encode()).hexdigest()[:8]
         history_file = Path(os.getcwd()) / "mission_history.json"
-        
+
         def _write_report_to_disk():
             combined_time = self.harvest_dur + ingest_dur
             avg_time = combined_time / max(self.stats["complete"], 1)
@@ -1735,7 +1765,7 @@ class Archivist(Screen):
                     if size == largest_size:
                         largest_track = self.tracks[idx]["title"]
                         break
-            
+
             report = {
                 "timestamp": datetime.now().isoformat(),
                 "playlist_id": playlist_id,
@@ -1762,7 +1792,7 @@ class Archivist(Screen):
                     for i, t in enumerate(self.tracks)
                 ]
             }
-            
+
             history = []
             if history_file.exists():
                 try:
@@ -1771,7 +1801,7 @@ class Archivist(Screen):
                         if not isinstance(history, list): history = []
                 except (json.JSONDecodeError, UnicodeDecodeError):
                     history = []
-            
+
             history.append(report)
             with open(history_file, 'w', encoding='utf-8') as f:
                 json.dump(history, f, indent=2)
@@ -1824,10 +1854,10 @@ class MissionHistoryScreen(Screen):
                     size_bytes = entry.get("total_collection_size_bytes", 0)
                     size_mb = size_bytes / (1024 * 1024)
                     table.add_row(
-                        ts, lib, 
-                        f"[bold green]{success}[/]", 
-                        f"[orange1]{miss}[/]", 
-                        f"[bright_red]{failed}[/]", 
+                        ts, lib,
+                        f"[bold green]{success}[/]",
+                        f"[orange1]{miss}[/]",
+                        f"[bright_red]{failed}[/]",
                         f"{size_mb:.2f}"
                     )
             except Exception as e:
@@ -1851,13 +1881,13 @@ class ResolveMatchScreen(Screen):
             yield Label(f"[bold cyan]{self.track['artist']} - {self.track['title']}[/]")
             yield Label("[white]Select which result matches this song:[/]")
             yield Static("", id="spacer-a")
-            
+
             for i, result in enumerate(self.results, 1):
                 title = result.get('title', 'Unknown')[:60]
                 duration = result.get('duration', 0)
                 dur_str = f"{int(duration // 60)}:{int(duration % 60):02d}"
                 yield Button(f"[{i}] {title} ({dur_str})", id=f"opt-{i}", variant="primary" if i == 1 else "default")
-            
+
             yield Static("", id="spacer-b")
             yield Button("[0] SKIP (Mark as No Match)", id="opt-0", variant="error")
         yield Footer()
@@ -2003,10 +2033,10 @@ class StatsScreen(Screen):
 
 class AetherApp(App):
     """The High-Agency Ingestion Vanguard."""
-    
+
     TITLE = "AETHER AUDIO ARCHIVIST PRO // MATTHEW BUBB"
     SUB_TITLE = "SOLO ARCHITECT: MATTHEW BUBB"
-    
+
     # ==========================================================================
     # CHROMA-SHIFT DESIGN SYSTEM
     # ==========================================================================
@@ -2125,7 +2155,7 @@ class AetherApp(App):
         margin-right: 2;
         width: auto;
     }
-    
+
     #scroll-indicator {
         margin-right: 2;
         width: 12;
@@ -2214,7 +2244,7 @@ class AetherApp(App):
         height: 100%;
         background: $bg;
     }
-    
+
     #history-table {
         margin-top: 1;
         height: 1fr;
@@ -2400,6 +2430,6 @@ if __name__ == "__main__":
     parser.add_argument("--url", default="")
     parser.add_argument("--threads", type=int, default=36)
     args = parser.parse_args()
-    
+
     app = AetherApp(url=args.url, threads=args.threads)
     app.run()
